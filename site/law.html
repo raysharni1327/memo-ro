@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Правовая памятка</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="app-body">
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">⚖</span>
+    <div class="brand-text">
+      <span class="brand-title">ПРАВОВАЯ ПАМЯТКА</span>
+      <span class="brand-sub">Кутузовский · Рабочий стол</span>
+    </div>
+  </div>
+
+  <div class="search">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="global-search" placeholder="Поиск…" />
+    <span class="search-kbd">Ctrl+K</span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" title="Избранное" id="btn-fav">
+      <span>★</span><span class="counter" id="fav-count">0</span>
+    </button>
+    <button class="icon-btn" title="Корзина" id="btn-cart">
+      <span>🗑</span><span class="counter" id="cart-count">0</span>
+    </button>
+    <div class="profile-badge" id="profile-badge" title="Сменить профиль можно в сайдбаре">
+      <span class="profile-dot" id="profile-dot" style="background:#888"></span>
+      <span id="profile-label">Профиль</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout-3col">
+
+  <!-- КОЛОНКА 1: дерево -->
+  <aside class="col-tree">
+    <div class="col-header">
+      <a class="back-link" href="app.html">← На главную</a>
+    </div>
+    <nav class="nav tree" id="tree-nav"></nav>
+    <button class="switch-profile" id="switch-profile">
+      <span>👤</span><span>Сменить профиль</span>
+    </button>
+  </aside>
+
+  <!-- КОЛОНКА 2: список статей -->
+  <section class="col-list">
+    <div class="list-header">
+      <div class="list-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="list-search-input" placeholder="Поиск по статьям…" />
+      </div>
+    </div>
+
+    <div class="list-subheader">
+      <div class="list-count" id="list-count">—</div>
+      <button class="list-reset" id="list-reset" style="display:none;">Показать все статьи</button>
+    </div>
+
+    <ul class="article-list" id="article-list"></ul>
+  </section>
+
+  <!-- КОЛОНКА 3: статья -->
+  <main class="col-article" id="article-view">
+    <div class="empty-hint" style="margin-top: 40px;">
+      Выбери статью слева.
+    </div>
+  </main>
+
+</div>
+
+<!-- Данные -->
+<script src="js/data/_manifest.js"></script>
+<script src="js/data/changelog.js"></script>
+<script src="js/data/ak.js"></script>
+<script src="js/data/pdd.js"></script>
+<script src="js/data/pk.js"></script>
+<script src="js/data/uk.js"></script>
+<script src="js/data/advocacy.js"></script>
+<script src="js/data/business.js"></script>
+<script src="js/data/courts.js"></script>
+<script src="js/data/duma.js"></script>
+<script src="js/data/emergency.js"></script>
+<script src="js/data/ethics.js"></script>
+<script src="js/data/government.js"></script>
+<script src="js/data/ministries.js"></script>
+<script src="js/data/parties.js"></script>
+<script src="js/data/secret.js"></script>
+<script src="js/data/service.js"></script>
+<script src="js/data/territories.js"></script>
+<script src="js/data/tk.js"></script>
+<script src="js/data/constitution.js"></script>
+<script src="js/data/fso.js"></script>
+<script src="js/data/weapons.js"></script>
+<script src="js/data/vs.js"></script>
+<script src="js/data/fsb.js"></script>
+<script src="js/data/police.js"></script>
+<script src="js/data/gibdd.js"></script>
+<script src="js/data/sk.js"></script>
+<script src="js/data/prosecutor.js"></script>
+<script src="js/data/health.js"></script>
+<script src="js/data/immunity.js"></script>
+
+<!-- Логика -->
+<script src="js/profile.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/render.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/law.js"></script>
+</body>
+</html>

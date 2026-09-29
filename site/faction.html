@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Правовая памятка — выбор фракции</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="welcome-body">
+
+<main class="welcome">
+  <div class="welcome-header" style="text-align:left; max-width:640px;">
+    <a class="back-link" href="index.html" style="margin-bottom:16px; display:inline-block;">← Назад</a>
+    <h1 class="welcome-title" style="font-size:20px;">Выбери фракцию</h1>
+  </div>
+
+  <div class="faction-grid">
+    <button class="faction-card" data-faction="fsb">
+      <span class="faction-dot" style="background:#e94a4a"></span>
+      <span class="faction-name">ФСБ</span>
+      <span class="faction-short">ФСБ</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="mvd">
+      <span class="faction-dot" style="background:#3b82f6"></span>
+      <span class="faction-name">МВД</span>
+      <span class="faction-short">МВД</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="sk">
+      <span class="faction-dot" style="background:#8b5cf6"></span>
+      <span class="faction-name">Следственный комитет</span>
+      <span class="faction-short">СК</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="vs">
+      <span class="faction-dot" style="background:#22c55e"></span>
+      <span class="faction-name">Вооружённые Силы</span>
+      <span class="faction-short">ВС</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="gibdd">
+      <span class="faction-dot" style="background:#f97316"></span>
+      <span class="faction-name">ГИБДД</span>
+      <span class="faction-short">ГИБДД</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="fso">
+      <span class="faction-dot" style="background:#ea580c"></span>
+      <span class="faction-name">ФСО</span>
+      <span class="faction-short">ФСО</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="prok">
+      <span class="faction-dot" style="background:#06b6d4"></span>
+      <span class="faction-name">Прокуратура</span>
+      <span class="faction-short">ПРОК.</span>
+      <span class="faction-arrow">→</span>
+    </button>
+
+    <button class="faction-card" data-faction="adv">
+      <span class="faction-dot" style="background:#10b981"></span>
+      <span class="faction-name">Адвокатура</span>
+      <span class="faction-short">АДВ.</span>
+      <span class="faction-arrow">→</span>
+    </button>
+  </div>
+
+  <div class="welcome-footer">
+    Данные хранятся локально в браузере. Приложение работает оффлайн.
+  </div>
+</main>
+
+<script src="js/profile.js"></script>
+<script>
+  document.querySelectorAll('.faction-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const faction = card.dataset.faction;
+      Profile.setRole('gov', faction);
+      window.location.href = 'app.html';
+    });
+  });
+</script>
+
+</body>
+</html>

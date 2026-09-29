@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Правовая памятка — вход</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="welcome-body">
+
+<main class="welcome">
+  <div class="welcome-header">
+    <div class="welcome-subtitle">РОССИЯ ОНЛАЙН · КУТУЗОВСКИЙ</div>
+    <h1 class="welcome-title">ПРАВОВАЯ ПАМЯТКА</h1>
+    <p class="welcome-desc">Выбери, кем ты заходишь. Роль можно сменить в любой момент.</p>
+  </div>
+
+  <div class="welcome-cards">
+    <button class="welcome-card" data-role="civil">
+      <div class="welcome-card-icon" style="color:#8b5cf6">👤</div>
+      <div class="welcome-card-title">Гражданский</div>
+      <div class="welcome-card-desc">Твои права, порядок задержания, что делать в спорной ситуации.</div>
+      <div class="welcome-card-arrow">→</div>
+    </button>
+
+    <button class="welcome-card" data-role="gov">
+      <div class="welcome-card-icon" style="color:#3b82f6">🛡</div>
+      <div class="welcome-card-title">Гос сотрудник</div>
+      <div class="welcome-card-desc">Полномочия по фракции: ФСБ, МВД, СК, ВС, ГИБДД, ФСО, Прокуратура, Адвокатура.</div>
+      <div class="welcome-card-arrow">→</div>
+    </button>
+  </div>
+
+  <div class="welcome-footer">
+    Данные хранятся локально в браузере. Приложение работает оффлайн.
+  </div>
+</main>
+
+<script src="js/profile.js"></script>
+<script>
+  // Обработка клика по карточке профиля
+  document.querySelectorAll('.welcome-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const role = card.dataset.role;
+      if (role === 'civil') {
+        // Гражданский — сразу на главную
+        Profile.setRole('civil', null);
+        window.location.href = 'app.html';
+      } else {
+        // Гос сотрудник — на выбор фракции
+        window.location.href = 'faction.html';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
