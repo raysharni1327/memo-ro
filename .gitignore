@@ -1,0 +1,68 @@
+# ============================================================
+# Правовая памятка РО — .gitignore
+# ============================================================
+
+# --- Сессия Playwright (cookies форума) ---
+# ЭТО КРИТИЧНО: содержит сессию forum.russia.online, коммитить нельзя
+parser/storage_state.json
+parser/storage_state.*.json
+
+# --- Локальные архивы и неактуальные версии ---
+# Самый первый снимок raw/ (исторический, для справки)
+raw_backup_*/
+# Ранняя версия проекта (до появления site/)
+mockup/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# --- Node (если появится) ---
+node_modules/
+package-lock.json
+yarn.lock
+
+# --- Редакторы и IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- ОС ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Логи и временные файлы ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tmp
+*.bak
+
+# ============================================================
+# ЧТО КОММИТИМ:
+#   raw/                    — сырые данные с форума
+#   data/                   — распарсенные деревья
+#   parser/cache/           — снимки для diff
+#   parser/changelog.json   — история изменений
+#   site/js/data/*.js       — JS-обёртки для фронта
+# ============================================================
