@@ -47,6 +47,11 @@ const Render = (() => {
     'Г': 'gibdd', 'О': 'fso', 'П': 'prok', 'Адв': 'adv',
   };
 
+  // Фракции, которые НЕ участвуют в передаче материала:
+  //   - Прокуратура работает по любым делам (надзор)
+  //   - Адвокатура — защита, не расследование
+  const NO_TRANSFER_FACTIONS = ['prok', 'adv'];
+
   const GRAY_FOREIGN = '#3a3a3a';
   const GRAY_COMMON  = '#555';
 
@@ -183,7 +188,6 @@ const Render = (() => {
     }).join('');
   }
 
-  // "2026-09-29" → "29.09"
   function shortDate(iso) {
     if (!iso || iso.length < 10) return iso || '';
     return iso.substring(8, 10) + '.' + iso.substring(5, 7);
@@ -267,21 +271,50 @@ const Render = (() => {
 
   function isCommon(article) {
     const marks = (article.meta && article.meta.marks) || [];
-    return marks.length === 0;
+    if (marks.length === 0) return true;
+    // Если все метки — фракции без передачи (П, Адв), статья фактически общая
+    const effective = marks
+      .map(markToFaction)
+      .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
+    return effective.length === 0;
   }
 
   function isMine(article, myFaction) {
+    // Прокурор и адвокат — «своя» статья для них всегда (по логике игры)
+    if (NO_TRANSFER_FACTIONS.includes(myFaction)) return true;
+
     const marks = (article.meta && article.meta.marks) || [];
     if (marks.length === 0) return true;
-    return marks.some(m => markToFaction(m) === myFaction);
+
+    // Если статья помечена только П / Адв — она общая, а не чужая
+    const effective = marks
+      .map(markToFaction)
+      .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
+    if (effective.length === 0) return true;
+
+    return effective.includes(myFaction);
   }
 
   function transferTo(article, myFaction) {
+    // Прокурор и адвокат не участвуют в передаче — они могут всё / защищают всех
+    if (NO_TRANSFER_FACTIONS.includes(myFaction)) return null;
+
     const marks = (article.meta && article.meta.marks) || [];
     if (marks.length === 0) return null;
-    if (marks.some(m => markToFaction(m) === myFaction)) return null;
-    const firstFaction = markToFaction(marks[0]);
-    return firstFaction || null;
+
+    // Отбрасываем метки фракций без передачи: П (прокуратура) и Адв (адвокатура)
+    const effective = marks
+      .map(markToFaction)
+      .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
+
+    // Если после фильтрации ничего не осталось — считаем статью общей
+    if (effective.length === 0) return null;
+
+    // Если одна из оставшихся меток — моя, передавать не надо
+    if (effective.includes(myFaction)) return null;
+
+    // Иначе передаём первому, кто может работать
+    return effective[0];
   }
 
   // === law.html: список статей ===
