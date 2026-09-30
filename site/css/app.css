@@ -1377,3 +1377,5 @@ details[open] > .nav-title { color: var(--text); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.empty-hint--padded { padding: 20px; }
+.empty-hint--mt40   { margin-top: 40px; }

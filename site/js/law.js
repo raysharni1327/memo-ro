@@ -2,17 +2,34 @@
 // Страница закона: law.html#<doc_id>[/<node>][-<article>]
 // ============================================================
 
+// Соответствие букв типам узлов (в URL: p3, s2, c1)
+const NODE_TYPE_MAP = { p: 'part', s: 'section', c: 'chapter' };
+
+// Цвета индикатора профиля (совпадают с акцентами CSS)
+const DOT_COLORS = {
+  civil: '#8b5cf6',
+  gov:   '#3b82f6',
+};
+
+// Заглушки
+const HINT_NO_DOC = `<div class="empty-hint empty-hint--padded">Документ не указан.</div>`;
+const HINT_PICK_ARTICLE = `<div class="empty-hint empty-hint--mt40">Выбери статью слева.</div>`;
+
+// Состояние страницы
 const LawState = {
   docId: null,
   nodePath: null,
   articleNum: null,
 };
 
+// ------------------------------------------------------------
+// Точка входа
+// ------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
 
   const profile = Profile.get();
   if (!profile) {
-    window.location.href = 'index.html';
+    location.href = 'index.html';
     return;
   }
 
@@ -21,22 +38,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   parseHash();
 
+  const treeNav = document.getElementById('tree-nav');
   if (!LawState.docId || !Docs.get(LawState.docId)) {
-    document.getElementById('tree-nav').innerHTML =
-      `<div class="empty-hint" style="padding:20px;">Документ не указан.</div>`;
+    if (treeNav) treeNav.innerHTML = HINT_NO_DOC;
     return;
   }
 
+  renderAll();
+
+  bindTreeNav();
+  bindListReset();
+  bindArticleList();
+  bindHeaderButtons();
+  bindHotkeys();
+  bindProfileSwitcher();
+  bindHashChange();
+});
+
+// ------------------------------------------------------------
+// Полный рендер страницы под текущее состояние
+// ------------------------------------------------------------
+function renderAll() {
   Render.tree(LawState.docId, LawState.nodePath);
   renderList();
 
+  const articleView = document.getElementById('article-view');
   if (LawState.articleNum) {
     Render.article(LawState.docId, LawState.articleNum);
     highlightActiveArticle(LawState.articleNum);
+  } else if (articleView) {
+    articleView.innerHTML = HINT_PICK_ARTICLE;
   }
+}
 
-  // === Клик по дереву ===
-  document.getElementById('tree-nav').addEventListener('click', (e) => {
+// ------------------------------------------------------------
+// Обработчики
+// ------------------------------------------------------------
+function bindTreeNav() {
+  const treeNav = document.getElementById('tree-nav');
+  if (!treeNav) return;
+
+  treeNav.addEventListener('click', (e) => {
     if (e.target.closest('.tree-arrow')) {
       e.stopPropagation();
       const parent = e.target.closest('.tree-node');
@@ -53,31 +95,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const path = node.dataset.path;
     const isActive = node.classList.contains('tree-active');
 
-    if (isActive) {
-      LawState.nodePath = null;
-    } else {
-      LawState.nodePath = path ? path.split('/') : null;
-    }
-
+    LawState.nodePath = isActive ? null : (path ? path.split('/') : null);
     LawState.articleNum = null;
     updateHash();
+
     Render.tree(LawState.docId, LawState.nodePath);
     renderList();
-    document.getElementById('article-view').innerHTML =
-      `<div class="empty-hint" style="margin-top: 40px;">Выбери статью слева.</div>`;
-  });
 
-  // === Кнопка "Показать все статьи" ===
-  document.getElementById('list-reset').addEventListener('click', () => {
+    const articleView = document.getElementById('article-view');
+    if (articleView) articleView.innerHTML = HINT_PICK_ARTICLE;
+  });
+}
+
+function bindListReset() {
+  const btn = document.getElementById('list-reset');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
     LawState.nodePath = null;
     LawState.articleNum = null;
     updateHash();
     Render.tree(LawState.docId, null);
     renderList();
   });
+}
 
-  // === Клик по статье или по ★/🗑 в списке ===
-  document.getElementById('article-list').addEventListener('click', (e) => {
+function bindArticleList() {
+  const list = document.getElementById('article-list');
+  if (!list) return;
+
+  list.addEventListener('click', (e) => {
     const favBtn = e.target.closest('[data-fav]');
     if (favBtn) {
       e.stopPropagation();
@@ -88,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
       Modal.updateCounters();
       return;
     }
+
     const cartBtn = e.target.closest('[data-cart]');
     if (cartBtn) {
       e.stopPropagation();
@@ -100,69 +148,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const row = e.target.closest('.article-row');
     if (!row) return;
+
     const num = row.dataset.article;
     if (!num) return;
 
     LawState.articleNum = num;
     updateHash();
 
-    document.querySelectorAll('.article-row').forEach(r => r.classList.remove('row-active'));
+    document.querySelectorAll('.article-row')
+      .forEach(r => r.classList.remove('row-active'));
     row.classList.add('row-active');
 
     Render.article(LawState.docId, num);
   });
+}
 
-  // === Кнопки в шапке ===
-  document.getElementById('btn-fav')?.addEventListener('click', () => Modal.openFavorites());
-  document.getElementById('btn-cart')?.addEventListener('click', () => Modal.openCart());
+function bindHeaderButtons() {
+  document.getElementById('btn-fav')
+    ?.addEventListener('click', () => Modal.openFavorites());
+  document.getElementById('btn-cart')
+    ?.addEventListener('click', () => Modal.openCart());
+  document.getElementById('global-search')
+    ?.addEventListener('click', () => Modal.openSearch());
+  document.getElementById('switch-profile')
+    ?.addEventListener('click', () => {
+      Modal.openProfileSwitcher(() => {
+        updateHeader(Profile.get());
+        if (LawState.docId) {
+          renderList();
+          if (LawState.articleNum) {
+            Render.article(LawState.docId, LawState.articleNum);
+          }
+        }
+      });
+    });
+}
 
-    // === Глобальный поиск ===
-  document.getElementById('global-search')?.addEventListener('click', () => Modal.openSearch());
-
+function bindHotkeys() {
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       Modal.openSearch();
     }
   });
+}
 
-  // === Смена профиля ===
-  document.getElementById('switch-profile')?.addEventListener('click', () => {
-    Modal.openProfileSwitcher(() => {
-      updateHeader(Profile.get());
-      if (LawState.docId) {
-        renderList();
-        if (LawState.articleNum) {
-          Render.article(LawState.docId, LawState.articleNum);
-        }
-      }
-    });
-  });
+function bindProfileSwitcher() {
+  // Уже встроено в bindHeaderButtons — оставлено для совместимости.
+  // Если понадобится отдельная логика — вынести сюда.
+}
 
-  // === Реакция на смену hash ===
+function bindHashChange() {
   window.addEventListener('hashchange', () => {
     parseHash();
     if (!LawState.docId || !Docs.get(LawState.docId)) return;
-
-    Render.tree(LawState.docId, LawState.nodePath);
-    renderList();
-
-    if (LawState.articleNum) {
-      Render.article(LawState.docId, LawState.articleNum);
-      highlightActiveArticle(LawState.articleNum);
-    } else {
-      document.getElementById('article-view').innerHTML =
-        `<div class="empty-hint" style="margin-top: 40px;">Выбери статью слева.</div>`;
-    }
+    renderAll();
   });
+}
 
-});
-
-// === Утилиты ===
-
+// ------------------------------------------------------------
+// Hash-навигация
+// ------------------------------------------------------------
 function parseHash() {
   const hash = location.hash.substring(1);
-  if (!hash) return;
+
+  if (!hash) {
+    LawState.docId = null;
+    LawState.nodePath = null;
+    LawState.articleNum = null;
+    return;
+  }
 
   const [docAndPath, articleNum] = splitArticle(hash);
   LawState.articleNum = articleNum;
@@ -173,14 +228,15 @@ function parseHash() {
 }
 
 function splitArticle(hash) {
-  const lastSlash = hash.lastIndexOf('/');
-  const tail = hash.substring(lastSlash + 1);
+  const parts = hash.split('/');
+  const tail = parts[parts.length - 1];
   const dashIdx = tail.indexOf('-');
+
   if (dashIdx > 0) {
     const num = tail.substring(dashIdx + 1);
     if (/^\d/.test(num)) {
-      const before = hash.substring(0, lastSlash + 1) + tail.substring(0, dashIdx);
-      return [before, num];
+      parts[parts.length - 1] = tail.substring(0, dashIdx);
+      return [parts.join('/'), num];
     }
   }
   return [hash, null];
@@ -196,12 +252,18 @@ function updateHash() {
   history.replaceState(null, '', '#' + hash);
 }
 
+// ------------------------------------------------------------
+// Список статей
+// ------------------------------------------------------------
 function renderList() {
   const articles = getFilteredArticles(LawState.docId, LawState.nodePath);
   Render.articleList(LawState.docId, articles);
 
   const resetBtn = document.getElementById('list-reset');
-  resetBtn.style.display = (LawState.nodePath && LawState.nodePath.length) ? 'inline-block' : 'none';
+  if (resetBtn) {
+    resetBtn.style.display =
+      (LawState.nodePath && LawState.nodePath.length) ? 'inline-block' : 'none';
+  }
 
   if (LawState.articleNum) highlightActiveArticle(LawState.articleNum);
 }
@@ -237,8 +299,7 @@ function findInLevel(nodes, segment) {
   const match = segment.match(/^([psc])(\d+)$/i);
   if (!match) return null;
 
-  const typeMap = { p: 'part', s: 'section', c: 'chapter' };
-  const type = typeMap[match[1].toLowerCase()];
+  const type = NODE_TYPE_MAP[match[1].toLowerCase()];
   const idx = parseInt(match[2], 10) - 1;
 
   const sameType = nodes.filter(n => n.type === type);
@@ -259,30 +320,30 @@ function collectArticles(node) {
 
 function highlightActiveArticle(num) {
   document.querySelectorAll('.article-row').forEach(r => {
-    if (r.dataset.article === num) r.classList.add('row-active');
-    else r.classList.remove('row-active');
+    r.classList.toggle('row-active', r.dataset.article === num);
   });
 }
 
+// ------------------------------------------------------------
+// Шапка страницы
+// ------------------------------------------------------------
 function updateHeader(profile) {
   const label = document.getElementById('profile-label');
   const dot = document.getElementById('profile-dot');
   if (!label || !dot) return;
 
+  let text, color;
+
   if (profile.role === 'civil') {
-    label.textContent = 'Гражданский';
-    dot.style.background = '#8b5cf6';
-    dot.style.color = '#8b5cf6';
-    return;
-  }
-  const info = Profile.factionInfo();
-  if (info) {
-    label.textContent = `Гос: ${info.short}`;
-    dot.style.background = info.color;
-    dot.style.color = info.color;
+    text = 'Гражданский';
+    color = DOT_COLORS.civil;
   } else {
-    label.textContent = 'Гос сотрудник';
-    dot.style.background = '#3b82f6';
-    dot.style.color = '#3b82f6';
+    const info = Profile.factionInfo();
+    text = info ? `Гос: ${info.short}` : 'Гос сотрудник';
+    color = info ? info.color : DOT_COLORS.gov;
   }
+
+  label.textContent = text;
+  dot.style.background = color;
+  dot.style.color = color;
 }
