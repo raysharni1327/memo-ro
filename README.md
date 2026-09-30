@@ -1,3 +1,7 @@
+Отлично. Держи `README.md` целиком. Так же — код-блоки через отступ в 4 пробела, чтобы не ломались.
+
+---
+
 # Правовая памятка РО
 
 Статичный веб-сайт с правовой памяткой по законодательству РО. Собирает
@@ -6,12 +10,7 @@
 хостится на Netlify. Все пользовательские данные (профиль, избранное,
 корзина, недавние) хранятся в `localStorage`.
 
-Доступ: **https://ro-memo.netlify.app/**
-
-**Локальная папка проекта:** `D:\project\memo-ro` (вне OneDrive).
-
-> 📌 **Если возобновляешь работу после перерыва** — сначала прочитай
-> `NOTES.md` в корне. Там — «где мы сейчас и что дальше».
+Доступ: **https://ro-memov2.netlify.app/**
 
 ---
 
@@ -19,33 +18,31 @@
 
 Данные проходят путь от форума до браузера:
 
-```
-forum.russia.online
-        │
-        │  run_raw.py (Playwright + сохранённая сессия)
-        ▼
-   raw/<thread_id>.json     ← сырые посты с форума
-   raw/<thread_id>.txt      ← то же, но читаемым текстом
-        │
-        │  parse.py (разбор дерева + diff с кэшем)
-        ├────────────────────────────────────────────┐
-        ▼                                            ▼
-   data/<doc_id>.json                          parser/cache/<doc_id>.json
-   (актуальное дерево)                         (снимок для следующего diff)
-        │                                            │
-        │                                            ▼
-        │                                     parser/changelog.json
-        │                                     (история изменений)
-        │                                            │
-        │  export_to_js.py                           │
-        ▼                                            ▼
-   site/js/data/<doc_id>.js                    site/js/data/changelog.js
-   site/js/data/_manifest.js
-        │
-        │  браузер: Docs.get(docId), window.CHANGELOG
-        ▼
-   app.html / law.html
-```
+    forum.russia.online
+            │
+            │  run_raw.py (Playwright + сохранённая сессия)
+            ▼
+       raw/<thread_id>.json     ← сырые посты с форума
+       raw/<thread_id>.txt      ← то же, но читаемым текстом
+            │
+            │  parse.py (разбор дерева + diff с кэшем)
+            ├────────────────────────────────────────────┐
+            ▼                                            ▼
+       data/<doc_id>.json                          parser/cache/<doc_id>.json
+       (актуальное дерево)                         (снимок для следующего diff)
+            │                                            │
+            │                                            ▼
+            │                                     parser/changelog.json
+            │                                     (история изменений)
+            │                                            │
+            │  export_to_js.py                           │
+            ▼                                            ▼
+       site/js/data/<doc_id>.js                    site/js/data/changelog.js
+       site/js/data/_manifest.js
+            │
+            │  браузер: Docs.get(docId), window.CHANGELOG
+            ▼
+       app.html / law.html
 
 **Разделение по папкам:**
 
@@ -65,10 +62,10 @@ forum.russia.online
 
 - **Python 3.8+**
 - **Playwright** — только для `run_raw.py`:
-  ```bash
-  pip install playwright
-  playwright install chromium
-  ```
+
+        pip install playwright
+        playwright install chromium
+
 - **Браузер** — Chrome / Edge / Firefox для просмотра сайта.
 - Опционально: `git` для версионирования.
 
@@ -78,58 +75,47 @@ forum.russia.online
 
 ### Полный цикл: собрать всё с нуля
 
-```bash
-cd parser
+    cd parser
 
-# 1. Собрать посты с форума (нужна сохранённая сессия)
-python run_raw.py
+    # 1. Собрать посты с форума (нужна сохранённая сессия)
+    python run_raw.py
 
-# 2. (Опционально) Посмотреть, что получилось
-python analyze.py
+    # 2. (Опционально) Посмотреть, что получилось
+    python analyze.py
 
-# 3. Распарсить в дерево + обновить changelog
-python parse.py
+    # 3. Распарсить в дерево + обновить changelog
+    python parse.py
 
-# 4. Проверить, что с штрафами всё ок
-python check_penalties.py
+    # 4. Проверить, что с штрафами всё ок
+    python check_penalties.py
 
-# 5. Выгрузить JS-обёртки для фронта
-python export_to_js.py
-```
+    # 5. Выгрузить JS-обёртки для фронта
+    python export_to_js.py
 
-Открыть сайт локально:
-
-```bash
-cd site
-python -m http.server 8000
-# Открыть http://localhost:8000/app.html
-```
-
-⚠️ **`file://` не работает с PWA** (Service Worker не регистрируется).
-Нужен локальный сервер.
+Открыть `site/app.html` в браузере (или поднять локальный сервер:
+`python -m http.server 8000` в корне проекта и зайти на
+`http://localhost:8000/site/app.html`).
 
 ### Обновление одного документа
 
-```bash
-cd parser
-python run_raw.py --only 4930      # 4930 — thread_id КоАП (см. config.json)
-python parse.py --only ak
-python check_penalties.py
-python export_to_js.py
-```
+    cd parser
+    python run_raw.py --only 4930      # 4930 — thread_id КоАП (см. config.json)
+    python parse.py --only ak
+    python check_penalties.py
+    python export_to_js.py
 
 `--only` можно использовать и в `run_raw.py`, и в `parse.py`.
 
 ### Проверка целостности
 
-```bash
-cd parser
-python analyze.py                # общая сводка по всем документам
-python check_penalties.py        # валидация штрафов
-```
+    cd parser
+    python analyze.py                # общая сводка по всем документам
+    python check_penalties.py        # валидация штрафов
 
 `analyze.py` печатает таблицу по каждому документу: сколько глав, статей,
-разделов, есть ли преамбула. Плюс сохраняет `analyze_report.json`.
+разделов, есть ли преамбула. Плюс сохраняет `analyze_report.json` для
+сравнения с предыдущим прогоном.
+
 ---
 
 ## 4. Скрипты
@@ -146,25 +132,25 @@ python check_penalties.py        # валидация штрафов
 
 **Запуск:**
 
-```bash
-python run_raw.py                 # все темы раздела
-python run_raw.py --only 4930     # только одна тема
-python run_raw.py --no-ask        # без подтверждения
-```
+    python run_raw.py                 # все темы раздела
+    python run_raw.py --only 4930     # только одна тема
+    python run_raw.py --no-ask        # без подтверждения
 
-**Про `storage_state.json`:** cookies форума, создаётся один раз после ручного
-логина. Когда сессия истечёт — `run_raw.py` начнёт получать 403, надо
-пересоздать. **Файл нельзя коммитить** (см. `.gitignore`).
+**Про `storage_state.json`:** это файл с cookies и localStorage
+форума, создаётся один раз после ручного логина. Когда сессия истекёт —
+`run_raw.py` начнёт получать 403, надо пересоздать. **Файл нельзя
+коммитить в git** (см. `.gitignore`).
 
 ### `analyze.py` — диагностика сырых данных
 
-Проходит по всем `raw/*.json`, считает количество глав/статей/разделов.
-Полезно при добавлении нового документа: сначала смотришь цифры, потом
-решаешь, к какому типу (A/B/C/D) он относится.
+Проходит по всем `raw/*.json`, считает количество глав/статей/разделов,
+проверяет, есть ли преамбула и содержание. Полезно при добавлении нового
+документа: сначала смотришь цифры, потом решаешь, к какому типу (A/B/C/D) он
+относится.
 
-```bash
-python analyze.py
-```
+**Запуск:**
+
+    python analyze.py
 
 Результат — таблица в консоли + `parser/analyze_report.json`.
 
@@ -173,45 +159,61 @@ python analyze.py
 Читает `raw/*.json`, определяет тип документа (A/B/C/D), строит дерево,
 извлекает штрафы. Сохраняет в `data/<doc_id>.json`.
 
-**Дополнительно:**
+**Дополнительно (с версии с changelog):**
 
 - Сравнивает новое дерево со снимком в `parser/cache/<doc_id>.json`.
-- Найденные изменения пишет в `parser/changelog.json`.
+- Найденные изменения (новая статья, изменился заголовок, изменилось
+  наказание, обновилась редакция) пишет в `parser/changelog.json`.
 - Обновляет снимок в `cache/` для следующего прогона.
 
-```bash
-python parse.py                    # все документы
-python parse.py --only ak          # только один
-python parse.py --show ak          # напечатать дерево, не сохранять
-python parse.py --no-cache         # не трогать cache/ и changelog
-```
+**Запуск:**
 
-`--no-cache` полезен при отладке.
+    python parse.py                    # все документы
+    python parse.py --only ak          # только один
+    python parse.py --show ak          # напечатать дерево, не сохранять
+    python parse.py --no-cache         # не трогать cache/ и changelog
+
+`--no-cache` полезен при отладке: парсит и сохраняет в `data/`, но не
+засоряет changelog.
 
 **Что извлекает:**
 
-- `meta.marks` — метки фракций из заголовка.
-- `meta.priorityStars` — приоритет розыска.
-- `penalty` — блок наказания.
-- `preamble` и `signature` — для типа D.
+- `meta.marks` — метки фракций из заголовка «Статья 14.3. (Ф/Р) …».
+- `meta.priorityStars` — приоритет розыска из строк «Приоритет розыска - 4».
+- `penalty` — блок наказания из строк «Наказание: …».
+- `preamble` и `signature` — для типа D (Конституция).
+
+**`parts` — многочастные статьи (вариант B):**
+
+- Если в `penalty.raw` больше одного диапазона «от X до Y» и в статье
+  ≥2 `paragraph` с номерами — создаётся `article.parts` (массив частей).
+- `RE_SENTENCE_SPLIT` режет `penalty.raw` на предложения (граница —
+  строчная буква + `.` + пробел + любая буква).
+- Сопоставление «предложение ↔ часть» — по порядку: N == M → 1:1;
+  N < M → первые N частей; N > M → лишние в последнюю.
+- `title` части — первые 60 символов текста с обрезкой по слову.
+- Сводный `penalty` статьи сохраняется.
 
 **Что не извлекает:** `conviction`, `jurisdiction`, `resolution`, `group`,
-`related` — см. раздел 11.
+`related` — эти поля описаны в `shema.json`, но парсер их не создаёт
+(см. раздел 11).
 
 ### `check_penalties.py` — валидация штрафов
 
-Ищет три класса проблем:
+Проходит по всем `data/*.json` и ищет три класса проблем:
 
-1. **Инверсии** — `from > to`.
+1. **Инверсии** — `from > to` (регулярка перепутала границы).
 2. **Пропущенный диапазон** — в `penalty.raw` есть «от X до Y», но в
    `types` нет `from`/`to`.
 3. **Штраф без сумм** — упомянут штраф, но `types` без чисел.
 
-```bash
-python check_penalties.py
-```
+**Запуск:**
 
-Должно выводить `✅ Проблем не найдено.`
+    python check_penalties.py
+
+Должно выводить «Проблем не найдено». Если что-то нашлось — открываешь
+`raw/<doc_id>.json`, смотришь формулировку, скорее всего нестандартный
+формат. Регулярку `RE_RANGE` в `parse.py` можно расширить.
 
 ### `export_to_js.py` — конвертер для фронта
 
@@ -220,6 +222,10 @@ python check_penalties.py
 - `site/js/data/<doc_id>.js` — `window.AK_DATA = {…};`
 - `site/js/data/_manifest.js` — список всех документов.
 - `site/js/data/changelog.js` — `window.CHANGELOG = […];`
+
+**Запуск:**
+
+    python export_to_js.py
 
 **Важно:** обязательно после каждого `parse.py`, иначе фронт не увидит
 изменений.
@@ -230,43 +236,42 @@ python check_penalties.py
 
 ### `raw/<thread_id>.json` — входные данные
 
-```json
-{
-  "thread_id": "4930",
-  "thread_url": "https://forum.russia.online/threads/…",
-  "doc_id": "ak",
-  "thread_title": "КОДЕКС РО ОБ АДМИНИСТРАТИВНЫХ ПРАВОНАРУШЕНИЯХ",
-  "revision": "20.09.2026",
-  "post_count": 1,
-  "first_post_id": "post-16504",
-  "posts": [
     {
-      "post_id": "post-16504",
-      "author": "Марк Брагин",
-      "date": "25.08.2026",
-      "last_edit": "27.09.2026",
-      "text": "ПОЛНЫЙ ТЕКСТ ПОСТА…"
+      "thread_id": "4930",
+      "thread_url": "https://forum.russia.online/threads/…",
+      "doc_id": "ak",
+      "thread_title": "КОДЕКС РО ОБ АДМИНИСТРАТИВНЫХ ПРАВОНАРУШЕНИЯХ",
+      "revision": "20.09.2026",
+      "post_count": 1,
+      "first_post_id": "post-16504",
+      "posts": [
+        {
+          "post_id": "post-16504",
+          "author": "Марк Брагин",
+          "date": "25.08.2026",
+          "last_edit": "27.09.2026",
+          "text": "ПОЛНЫЙ ТЕКСТ ПОСТА…"
+        }
+      ]
     }
-  ]
-}
-```
+
+Если закон разбит на несколько постов, они все лежат в `posts` в правильном
+порядке. Парсер склеивает их через `\n`.
 
 ### `data/<doc_id>.json` — дерево документа
 
-```json
-{
-  "id": "ak",
-  "title": "КоАП РО",
-  "full_title": "КОДЕКС РО ОБ АДМИНИСТРАТИВНЫХ ПРАВОНАРУШЕНИЯХ",
-  "revision": "20.09.2026",
-  "source_url": "https://forum.russia.online/threads/…",
-  "post_id": "post-16504",
-  "preamble": "",
-  "signature": "Нормативно-правовой акт подписан …",
-  "type_detected": "A",
-  "nodes": [ … ]
-}
-```
+    {
+      "id": "ak",
+      "title": "КоАП РО",
+      "full_title": "КОДЕКС РО ОБ АДМИНИСТРАТИВНЫХ ПРАВОНАРУШЕНИЯХ",
+      "revision": "20.09.2026",
+      "source_url": "https://forum.russia.online/threads/…",
+      "post_id": "post-16504",
+      "preamble": "",
+      "signature": "Нормативно-правовой акт подписан …",
+      "type_detected": "A",
+      "nodes": [ … ]
+    }
 
 **Типы узлов в `nodes`:**
 
@@ -275,95 +280,148 @@ python check_penalties.py
 | `part`         | `title`, `children`                           | ОБЩАЯ / ОСОБЕННАЯ ЧАСТЬ   |
 | `section`      | `number`, `title`, `children`                 | Раздел                    |
 | `chapter`      | `number`, `title`, `children`                 | Глава                     |
-| `article`      | `number`, `title`, `children`, `meta?`, `penalty?` | Статья               |
+| `article`      | `number`, `title`, `children`, `meta?`, `penalty?`, `parts?` | Статья      |
 | `paragraph`    | `number?`, `text`, `children?`                | Пункт                     |
 | `subparagraph` | `number`, `text`                              | Подпункт                  |
 | `note`         | `text`                                        | Примечание                |
 
-**`meta` у статьи:** `marks: ["Ф", "Р", …]`, `priorityStars: 1..5`.
+**`meta` у статьи** — сейчас заполняется только:
 
-**`penalty` у статьи:**
+- `marks: ["Ф", "Р", …]` — метки фракций.
+- `priorityStars: 1..5` — приоритет розыска.
 
-```json
-"penalty": {
-  "raw": "административный штраф от 10 000 до 30 000 рублей…",
-  "types": [
-    { "type": "штраф", "currency": "RUB", "from": 10000, "to": 30000 },
-    { "type": "арест", "to": 10, "unit": "суток" },
-    { "type": "конфискация" }
-  ]
-}
-```
+**`parts` у статьи** — только у многочастных статей (вариант B):
+
+    "parts": [
+      {
+        "number": "1",
+        "label": "14.18 ч.1",
+        "title": "Движение по обочине, разделительной полосе…",
+        "text": "Движение по обочине, разделительной полосе либо занятие…",
+        "penalty": {
+          "raw": "административный штраф от 500 до 2 000 рублей",
+          "types": [{ "type": "штраф", "currency": "RUB", "from": 500, "to": 2000 }]
+        }
+      }
+    ]
+
+`parts` создаются, только если в `penalty.raw` больше одного диапазона
+«от X до Y» и в статье ≥2 `paragraph` с номерами. Сводный `penalty`
+статьи при этом сохраняется (нужен для списка статей в колонке 2).
+
+**`penalty` у статьи** — только если в тексте была строка «Наказание: …»:
+
+    "penalty": {
+      "raw": "административный штраф от 10 000 до 30 000 рублей…",
+      "types": [
+        { "type": "штраф", "currency": "RUB", "from": 10000, "to": 30000 },
+        { "type": "арест", "to": 10, "unit": "суток" },
+        { "type": "конфискация" }
+      ]
+    }
 
 Возможные `type`: `штраф`, `арест`, `лишение свободы`, `лишение права`,
 `конфискация`, `обязательные работы`, `предупреждение`,
 `приостановление деятельности`.
 
 **Как парсятся штрафы:** регулярка `RE_RANGE` ловит «от X до Y», допускает
-«рублей» между числами. Если в статье несколько диапазонов — сжимаются
-в один `min(from) … max(to)`.
+«рублей» между числами («от 50 000 рублей до 100 000 рублей»). Если в статье
+несколько диапазонов, они сжимаются в один `min(from) … max(to)`.
+
+### `node_id`
+
+**Статья:** `{doc_id}-{article_number}`, например `ak-14.3`.
+**Часть:** `{doc_id}-{article_number}#p{N}`, например `ak-14.18#p1`.
+
+В URL: `law.html#ak-14.18#p1` открывает статью 14.18 целиком (вариант A:
+без авто-скролла к части). `parts` в корзине и избранном отображаются
+как `14.18 ч.N`.
 
 ### `parser/cache/<doc_id>.json` — снимок для diff
 
 Полная копия `data/<doc_id>.json` на момент предыдущего прогона `parse.py`.
-**Коммитится в git.**
+При следующем прогоне `parse.py` читает кэш, сравнивает с новым деревом и
+пишет разницу в `changelog.json`. Затем обновляет кэш.
+
+**Коммитится в git** — чтобы при развёртывании на другой машине была история.
+
+**Перед полным прогоном**, если менял структуру `data/*.json` (например,
+добавлял `parts`), удали `parser/cache/*.json` для затронутых документов —
+иначе diff насыпет ложных `text_changed`.
 
 ### `parser/changelog.json` — история изменений
 
-```json
-{
-  "entries": [
     {
-      "date": "2026-09-29",
-      "doc_id": "ak",
-      "article": "14.3",
-      "kind": "penalty_changed",
-      "text": "Изменено наказание"
+      "entries": [
+        {
+          "date": "2026-09-29",
+          "doc_id": "ak",
+          "article": "14.3",
+          "kind": "penalty_changed",
+          "text": "Изменено наказание"
+        }
+      ]
     }
-  ]
-}
-```
 
-Записи сверху вниз от свежих. Хранится **до 500 записей**
-(`CHANGELOG_MAX` в `parse.py`).
+Записи идут сверху вниз от самых свежих. Хранится **до 500 записей**
+(константа `CHANGELOG_MAX` в `parse.py`).
 
-**Возможные `kind`:** `article_added`, `article_removed`, `title_changed`,
-`penalty_changed`, `text_changed`, `revision_changed`.
+**Возможные `kind`:**
+
+- `article_added` — новая статья;
+- `article_removed` — статья удалена;
+- `title_changed` — изменился заголовок;
+- `penalty_changed` — изменилось наказание;
+- `text_changed` — изменился текст состава;
+- `revision_changed` — обновилась только `revision` (когда постатейных
+  изменений не нашли).
 
 ### `site/js/data/<doc_id>.js` — обёртка для браузера
 
-```javascript
-window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
-```
+    window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
 
-Плюс `_manifest.js` и `changelog.js`.
+Плюс `_manifest.js` (список документов) и `changelog.js`
+(`window.CHANGELOG = […]`).
 
 ---
 
 ## 6. Changelog: как работает
 
-1. `parse.py` для каждого документа:
-   - читает предыдущий снимок из `cache/`,
-   - парсит новый,
-   - сравнивает: добавленные / удалённые / изменённые статьи,
-   - пишет изменения в `parser/changelog.json`,
-   - обновляет снимок в `cache/`.
-2. `export_to_js.py` выгружает в `site/js/data/changelog.js`.
-3. `Render.changelog()` на главной показывает последние 5 записей.
-   **Клик по записи → переход на статью.**
+**Логика:**
 
-**Первый прогон:** кэша нет → changelog пустой. Со второго — работает.
+1. При запуске `parse.py` для каждого документа:
+    - читаем предыдущий снимок из `parser/cache/<doc_id>.json` (если есть),
+    - парсим новый,
+    - сравниваем: добавленные статьи, удалённые, изменившиеся (по заголовку,
+      наказанию, тексту), обновление `revision`.
+    - пишем найденные изменения в `parser/changelog.json`,
+    - обновляем снимок в `cache/`.
 
-**Сбросить историю:** удалить `parser/changelog.json` и `parser/cache/*.json`,
-прогнать `parse.py`, потом `export_to_js.py`.
+2. `export_to_js.py` читает `changelog.json` и выгружает в
+   `site/js/data/changelog.js`.
+
+3. `Render.changelog()` на главной читает `window.CHANGELOG`, показывает
+   последние 5 записей. Клик по записи → переход на соответствующую статью.
+
+**Первый прогон:** кэша ещё нет → `parse.py` не находит изменений, changelog
+остаётся пустым. Со вторым прогоном всё в порядке.
+
+**Если нужно принудительно «сбросить» историю:** удалить
+`parser/changelog.json` и `parser/cache/*.json`, затем прогнать `parse.py`
+(создаст свежие кэши без записей). Фронт-обёртку тоже обновить через
+`export_to_js.py`.
 
 ---
 
 ## 7. Типы документов
 
+Парсер автоматически определяет структуру по тексту, результат — в поле
+`type_detected`.
+
 ### A — обычный закон
 
-«Глава 1.», «Статья 14.3.», пункты «1.», подпункты «а)», «1)».
+Признаки: «Глава 1.» или «Глава IV.», «Статья 14.3.», пункты «1.»,
+подпункты «а)», «1)». Самый частый тип.
 
 **Примеры:** `ak`, `uk`, `pk`, `tk`, `fsb`, `police`, `gibdd`, `sk`,
 `prosecutor`, `duma`, `government`, `ministries`, `courts`, `territories`,
@@ -387,45 +445,56 @@ window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
 Есть преамбула и содержание, главы «Глава I.», пункты «1.», «2.».
 
 **Пример:** `constitution`.
+
+**Если новый документ не подходит ни под один тип** — сначала
+`python analyze.py`, потом либо подгоняем формулировки в `raw/`, либо пишем
+новый `parse_type_X` в `parse.py`.
+
 ---
 
 ## 8. Фронтенд
 
 Все файлы в `site/js/`.
 
+**Логика сайта:**
+
 | Файл         | Что делает                                                    |
 |--------------|---------------------------------------------------------------|
 | `profile.js` | Профиль: роль (гражданский / гос), фракция. Хранится в LS.   |
-| `data.js`    | Загрузчик: `Docs.get`, `findArticle`, `allArticles`, `searchAll`, `parseNodeId`, `walkTree`. |
-| `store.js`   | Избранное, корзина, недавние. Всё в LS. `resolveNode`, `cartSummary`. |
-| `render.js`  | Рендер: sidebar, tree, articleList, article, changelog, recent. `effectiveMarks`, `getMyFaction`. |
-| `modal.js`   | Модалки: избранное, корзина, смена профиля, поиск.            |
+| `data.js`    | Загрузчик: `Docs.get(docId)`, `findArticle(nodeId)`, `parseNodeId`. |
+| `store.js`   | Избранное, корзина, недавние. Всё в LS.                       |
+| `render.js`  | Рендер всех компонентов: sidebar, tree, article, changelog.  |
+| `modal.js`   | Модалки: избранное, корзина, смена профиля.                  |
 | `app.js`     | Точка входа главной (`app.html`).                            |
 | `law.js`     | Точка входа страницы закона (`law.html`).                    |
 
 **Ключевые фичи:**
 
-- **Избранное** — ★ на статье, модалка в топбаре.
+- **Избранное** — ★ на статье, отображается в топбаре модалкой.
 - **Корзина** — 🗑 на статье, агрегация наказаний (сумма штрафов,
-  максимальный арест, максимальный приоритет). Сводка + «Скопировать
-  полностью» / «Скопировать номера».
-- **Недавние** — последние 8 открытых статей (в LS), на главной — 4 свежих.
-- **Changelog** — последние 5 изменений на главной, кликаются.
+  максимальный арест, максимальный приоритет).
+- **Части статьи** — у многочастных статей (см. `parts`) карточки
+  `14.18 ч.N` со своим `penalty` и кнопками ★/🗑. В избранное и корзину
+  можно добавлять конкретную часть, а не всю статью. `nodeId` части —
+  `ak-14.18#p1`. При клике на часть открывается статья целиком (без
+  авто-скролла к части).
+- **Недавние** — автоматически сохраняются последние 8 открытых статей
+  (в LS), на главной показываются 4 самых свежих.
+- **Changelog** — последние 5 изменений в документах, на главной.
 - **Профиль** — гражданский или гос-сотрудник (с фракцией). Влияет на
   подсветку статей, метки фракций, warn-блоки «не подследственно».
-- **Смена профиля** — через модалку в сайдбаре, без перезагрузки.
-- **Глобальный поиск** (`Ctrl+K`) — по номеру, заголовку, тексту статьи,
-  с сортировкой по релевантности.
+- **Смена профиля** — через модалку в сайдбаре, без перезагрузки страницы.
 
 **Хранилище (localStorage):**
 
 - `ro_memo_profile` — профиль.
 - `ro_memo_favorites` — избранные `nodeId`.
 - `ro_memo_cart` — корзина `nodeId`.
-- `ro_memo_recent` — недавние `nodeId` (максимум 8).
+- `ro_memo_recent` — недавние `nodeId` (максимум 8, свежие сверху).
 
-Ключи — **с подчёркиваниями**. Если остались старые ключи (`ro-memo-*`
-с дефисами) — удалить вручную через DevTools.
+Ключи — **с подчёркиваниями**. Если в LS остались старые ключи
+(`ro-memo-*` с дефисами) — они от предыдущей версии проекта, их надо
+удалить вручную через DevTools.
 
 ---
 
@@ -434,25 +503,53 @@ window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
 ### Обновить существующий закон
 
 1. Найти `thread_id` в `parser/config.json` → секция `threads`.
-2. `python run_raw.py --only 4930`
-3. `python parse.py --only ak`
-4. `python check_penalties.py`
-5. `python export_to_js.py`
-6. Открыть `law.html#ak` на сайте (`Ctrl + Shift + R`), проверить.
+2. Собрать свежие посты:
+
+        python run_raw.py --only 4930
+
+3. Перепарсить (автоматически обновит кэш и changelog):
+
+        python parse.py --only ak
+
+4. Проверить штрафы:
+
+        python check_penalties.py
+
+5. Обновить JS для фронта:
+
+        python export_to_js.py
+
+6. Открыть `law.html#ak` на сайте (Ctrl+Shift+R), проверить.
 
 ### Добавить новый закон
 
 1. Открыть тему на форуме, скопировать `thread_id`.
-2. Добавить в `parser/config.json`: `threads`, `titles`.
-3. `python run_raw.py --only <thread_id>`
-4. `python analyze.py` — определить тип (A/B/C/D).
-5. `python parse.py --only <doc_id>`
-6. `python parse.py --show <doc_id>` — посмотреть дерево.
-7. `python check_penalties.py`
-8. Добавить `doc_id` в `DOC_IDS` в `parser/export_to_js.py`.
-9. `python export_to_js.py`
-10. Добавить `<script src="js/data/<doc_id>.js"></script>` в `app.html` и
-    `law.html`, а также `doc_id` в `GROUPS` в `render.js`.
+2. Добавить в `parser/config.json`:
+    - `threads`: `"<thread_id>": "<doc_id>"`,
+    - `titles`: `"<doc_id>": "Короткое название"`.
+3. Собрать:
+
+        python run_raw.py --only <thread_id>
+
+4. Определить тип:
+
+        python analyze.py
+
+5. Распарсить и посмотреть дерево:
+
+        python parse.py --only <doc_id>
+        python parse.py --show <doc_id>
+
+6. Проверить `check_penalties.py`.
+7. Добавить `doc_id` в `DOC_IDS` в `parser/export_to_js.py`.
+8. Экспортировать:
+
+        python export_to_js.py
+
+9. Добавить `<script src="js/data/<doc_id>.js"></script>` в `app.html` и
+   `law.html`, а также `doc_id` в `GROUPS` в `render.js`.
+10. Проверить, что в новом документе корректно собрались `parts`
+    (если есть многочастные статьи).
 11. Добавить имя файла в `PRECACHE` в `site/sw.js`.
 12. Поднять `CACHE_VERSION`.
 13. Проверить на сайте.
@@ -461,22 +558,29 @@ window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
 
 ## 10. Git
 
-**Локальная папка:** `D:\project\memo-ro` (вне OneDrive — чтобы не было
-конфликтов с `git`).
+**Первый раз:** инициализировать репозиторий в корне проекта:
 
-**`.gitignore`** исключает:
+    cd "проект памятки v2"
+    git init
+    git add .
+    git commit -m "Initial commit"
+
+**`.gitignore`** уже лежит в корне и исключает:
 
 - `parser/storage_state.json` — cookies форума (**критично**),
-- `raw_backup_*/`, `mockup/` — архивы,
 - `__pycache__/`, `*.pyc`,
 - `.vscode/`, `.idea/`,
 - системные файлы.
 
 **Коммитим:** `raw/`, `data/`, `parser/cache/`, `parser/changelog.json`,
-`site/js/data/*.js`, все скрипты, документацию, `NOTES.md`.
+`site/js/data/*.js`, все скрипты, документацию, `parser/parse.py`
+(с `split_parts`), `site/js/data.js`, `site/js/store.js`,
+`site/js/render.js`, `site/js/modal.js`, `site/js/law.js`.
 
 **Что нельзя коммитить:** `parser/storage_state.json`. Если случайно
-закоммитил — сразу отозвать: файл содержит активную сессию форума.
+закоммитил — сразу отозвать: файл содержит активную сессию форума, любой
+сможет ей воспользоваться.
+
 ---
 
 ## 11. Известные ограничения и TODO
@@ -485,156 +589,158 @@ window.AK_DATA = {"id":"ak","title":"КоАП РО",…};
 
 - `meta.conviction`, `meta.jurisdiction`, `meta.resolution`, `meta.group`.
 - `related` — связи со статьями других кодексов.
-- Обработка дублей номеров статей.
+- Обработка дублей номеров статей (если в документе две `Статья 1.`, они
+  получат одинаковый `node_id`, `Docs.findArticle` найдёт только первую).
 
-**Многочастные статьи со штрафами:**
+**Статьи с категориями лиц (не путать с частями):**
 
-Например, статья 8.8 КоАП: разные суммы для гражданина / должностного лица /
-организации. Парсер сжимает все диапазоны в один: `from: 20000, to: 250000`.
-Точность по частям не сохраняется.
+Статья 8.8 КоАП: «гражданину от 20 000 до 50 000; должностному лицу —
+от 50 000 до 100 000; организации — от 100 000 до 250 000». Здесь
+**не части**, а категории лиц — в статье один `paragraph`, поэтому
+`parts` не создаются, `penalty` остаётся сжатым (`20 000 — 250 000`).
+Если когда-то понадобится точность по категориям — это будет вариант C,
+отдельная задача.
 
-**Числа прописью и МРОТ:** «не менее пяти тысяч рублей», «до ста тысяч»,
-«500 МРОТ» — не парсятся.
+**Числа прописью и МРОТ:**
 
-**Мёртвые поля в `config.json`:** `location`, `blacklist`, `schemas` — не
-используются.
+- «не менее пяти тысяч рублей» — не парсится;
+- «до ста тысяч» — не парсится;
+- «500 МРОТ» — не парсится.
 
-**Мобильная вёрстка:** есть `@media (max-width: 900px)`, но `layout-3col`
-на телефоне не перестраивается. Если понадобится — отдельная задача.
+Регулярка ловит только цифры.
 
-**Чистка Python-скриптов:** не начата. JS-модули и CSS — почищены.
+**Мёртвые поля в `config.json`:**
+
+`location`, `blacklist`, `schemas` — не используются нигде. Оставлены как
+резерв. Если уверен, что не понадобятся — можно удалить.
+
+**Плюрализация в интерфейсе:**
+
+Счётчик «1 статей» вместо «1 статья» в списке — не критично, но если
+хочется — можно поправить в `render.js`.
 
 ---
 
 ## 12. Отладка
 
 **`check_penalties.py` нашёл «ПРОПУЩЕН ДИАПАЗОН».**
-Открой `raw/<doc_id>.json`, найди статью, посмотри формулировку. Скорее
-всего — нестандартный формат. Регулярку `RE_RANGE` в `parse.py` можно
+Открой `raw/<doc_id>.json`, найди статью, посмотри формулировку. Обычно
+это нестандартный формат. Регулярку `RE_RANGE` в `parse.py` можно
 расширить.
 
 **Парсер построил странное дерево (`parse.py --show`).**
-Смотри на `--show ak` и текст. Скорее всего — нестандартный заголовок
-главы/статьи.
+Смотри на `--show ak` и текстом — где дерево поехало. Скорее всего либо
+нестандартный заголовок главы/статьи, либо лишние пустые строки.
 
 **На сайте не обновляются данные.**
 Забыл `export_to_js.py`. Фронт читает `site/js/data/*.js`, а не
 `data/*.json`.
 
-**⚠️ Service Worker кэширует JS/CSS.**
-Если правил файл, а браузер отдаёт старое:
-
-1. `Ctrl + Shift + R` (жёсткое обновление).
-2. Если не помогло — DevTools → **Application → Service Workers →
-   Unregister всё**.
-3. **Application → Storage → Clear site data.**
-4. Перезагрузить страницу.
-
-**Сейчас Service Worker временно отключён** в `app.html` и `law.html`
-(блок регистрации закомментирован). При релизе — вернуть.
-
-**Если что-то не работает на фронте — первым делом DevTools → Console.**
-Красные ошибки там.
-
 **Changelog показывает не то, что ожидалось.**
 Проверь `parser/cache/<doc_id>.json` — там должно быть то, что было до
-прогона. Можно руками отредактировать cache — тогда diff посчитается
-от новой версии.
+прогона. Если что-то не так — можно руками отредактировать cache (тогда
+при следующем `parse.py` diff посчитается от новой версии).
 
-**Модалка избранного пуста, но счётчик > 0.**
-Значит `nodeId` устарел. Почистить через DevTools:
-```js
-localStorage.removeItem('ro_memo_favorites');
-localStorage.removeItem('ro_memo_cart');
-location.reload();
-```
+**Модалка избранного пуста, но в топбаре счётчик > 0.**
+Значит `nodeId` в `favList()` не соответствует ни одной реально
+существующей статье (устаревшие данные). Почистить через DevTools:
+
+    localStorage.removeItem('ro_memo_favorites');
+    localStorage.removeItem('ro_memo_cart');
+    location.reload();
 
 **`run_raw.py` возвращает 403.**
 Сессия истекла. Пересоздать `storage_state.json`.
+
+**Части статьи не отображаются карточками, хотя в `data/*.json` есть `parts`.**
+Проверь в консоли:
+
+    Docs.parseNodeId('ak-14.18#p1')  // → { docId: 'ak', articleNum: '14.18', partNum: '1' }
+    Docs.findArticle('ak-14.18#p1')  // → объект с _isPart: true
+    Store.resolveNode('ak-14.18#p1') // → { isPart: true, partNum: '1', ... }
+
+Если `partNum` нет — смотри `data.js` (`parseNodeId`).
+Если `_isPart` нет — смотри `data.js` (`findArticle`).
+Если `isPart` нет — смотри `store.js` (`resolveNode`).
+
+**Часть добавлена в корзину, но сумма считается как у всей статьи.**
+Проверь `Store.cartSummary()` в консоли — там должны быть `fineMin`/`fineMax`
+по частям. Если нет — `resolveNode` вернул `penalty` статьи, а не части.
+Обычно причина — не выставлен `_isPart: true` в `findArticle` (`data.js`).
 
 ---
 
 ## 13. Структура проекта
 
-```
-memo-ro/
-├── .gitignore
-├── README.md
-├── NOTES.md                    # рабочий контекст (см. NOTES.md)
-├── shema.json                  # каноническая схема данных
-│
-├── raw/                        # сырые посты с форума
-│   ├── 4930.json
-│   ├── 4930.txt
-│   └── ...
-│
-├── data/                       # обработанные деревья
-│   ├── ak.json
-│   ├── uk.json
-│   └── ...
-│
-├── parser/
-│   ├── run_raw.py              # сбор с форума
-│   ├── analyze.py              # обзор структуры
-│   ├── parse.py                # парсер + diff + cache
-│   ├── check_penalties.py      # валидация штрафов
-│   ├── export_to_js.py         # конвертер в JS
-│   ├── config.json             # маппинги thread_id ↔ doc_id
-│   ├── storage_state.json      # НЕ КОММИТИТЬ
-│   ├── changelog.json          # история изменений
-│   ├── analyze_report.json     # отчёт analyze.py
-│   └── cache/                  # снимки предыдущего прогона
-│       ├── ak.json
-│       └── ...
-│
-└── site/
-    ├── index.html              # выбор профиля
-    ├── faction.html            # выбор фракции
-    ├── app.html                # главная
-    ├── law.html                # страница документа
-    ├── sw.js                   # service worker (временно отключён)
-    ├── manifest.webmanifest    # PWA-манифест
-    ├── icons/                  # иконки PWA
-    │   ├── icon-192.png
-    │   └── icon-512.png
-    ├── css/
-    │   └── app.css
-    └── js/
-        ├── data/               # JS-обёртки
-        │   ├── _manifest.js
-        │   ├── changelog.js
-        │   ├── ak.js
-        │   └── ...
-        ├── app.js
-        ├── data.js
-        ├── law.js
-        ├── modal.js
-        ├── profile.js
-        ├── render.js
-        └── store.js
-```
+    проект памятки v2/
+    ├── .gitignore
+    ├── README.md
+    ├── NOTES.md
+    ├── shema.json                  # каноническая схема данных
+    │
+    ├── raw/                        # сырые посты с форума
+    │   ├── 4930.json
+    │   ├── 4930.txt
+    │   └── ...
+    │
+    ├── data/                       # обработанные деревья
+    │   ├── ak.json                 # у многочастных статей — поле parts
+    │   ├── uk.json
+    │   └── ...
+    │
+    ├── parser/
+    │   ├── run_raw.py              # сбор с форума
+    │   ├── analyze.py              # обзор структуры
+    │   ├── parse.py                # парсер + diff + cache + parts
+    │   ├── check_penalties.py      # валидация штрафов
+    │   ├── export_to_js.py         # конвертер в JS
+    │   ├── config.json             # маппинги thread_id ↔ doc_id, названия
+    │   ├── storage_state.json      # НЕ КОММИТИТЬ
+    │   ├── changelog.json          # история изменений
+    │   ├── analyze_report.json     # отчёт analyze.py
+    │   └── cache/                  # снимки предыдущего прогона
+    │       ├── ak.json
+    │       └── ...
+    │
+    └── site/
+        ├── index.html              # выбор профиля
+        ├── faction.html            # выбор фракции
+        ├── app.html                # главная
+        ├── law.html                # страница документа
+        ├── manifest.webmanifest    # манифест PWA
+        ├── sw.js                   # service worker
+        ├── icons/
+        │   ├── icon-192.png
+        │   └── icon-512.png
+        ├── css/
+        │   └── app.css
+        └── js/
+            ├── data/               # JS-обёртки
+            │   ├── _manifest.js
+            │   ├── changelog.js
+            │   ├── ak.js
+            │   └── ...
+            ├── app.js
+            ├── data.js
+            ├── law.js
+            ├── modal.js
+            ├── profile.js
+            ├── render.js
+            └── store.js
+
 ---
 
 ## 14. Что можно сделать дальше
 
-- **Почистить Python-скрипты** (`check_penalties.py`, `analyze.py`,
-  `parse.py`, `run_raw.py`) — по аналогии с JS.
-- Научить парсер извлекать `conviction` / `jurisdiction` / `related`.
+- **Вариант C — категории лиц.** Статьи вида 8.8 КоАП (гражданин/
+  должностное лицо/организация) сейчас сжимаются в один диапазон.
+- **Авто-скролл и подсветка части** при переходе по `#ak-14.18#p1`.
+- **Проверка `parts` в `check_penalties.py`** — валидация частей.
+- Научить парсер извлекать `conviction` / `jurisdiction` / `related` —
+  либо через метки в тексте, либо полуавтоматически.
 - Обработка дублей номеров статей (`node_id` с суффиксами `-1`, `-2`).
-- Инкрементальный changelog (только изменённые документы).
-- Командная палитра: расширить `Ctrl+K` — быстрые переходы, команды.
-- Подсветка совпадений в результатах поиска (`<mark>`).
-- Автоматизация пайплайна: `parser/update_all.py` одной командой.
+- Кэш и changelog: сейчас обновляются целиком, можно перейти на
+  инкрементальный (только изменённые документы).
+- Маленький бэкенд-скрипт для автозапуска `run_raw.py → parse.py →
+  export_to_js.py` одной командой (сейчас это 4 команды вручную).
 - Светлая тема.
-- Экспорт статьи в markdown/PDF.
-- Кэш документов в IndexedDB.
-- Мобильная вёрстка.
-
----
-
-## 15. Полезные ссылки
-
-- **Сайт:** https://ro-memo.netlify.app/
-- **Форум:** https://forum.russia.online/
-- **Локальный запуск:** `cd site && python -m http.server 8000`
-- **Рабочий контекст:** `NOTES.md` в корне

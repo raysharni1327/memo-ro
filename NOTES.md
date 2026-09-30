@@ -1,120 +1,367 @@
+NOTES — рабочий контекст проекта
+Этот файл — для быстрого возврата в контекст. Если начинается новая сессия
+(например, в чате с ассистентом), достаточно скинуть README.md + NOTES.md
+и всё станет понятно без объяснений с нуля.
 
-### Ключевые файлы фронта
+README.md — стабильная документация. Этот файл — «где мы сейчас и что дальше».
 
-| Файл | Что делает |
-|---|---|
-| `site/js/data.js` | `Docs.get`, `findArticle`, `allArticles`, `searchAll`, `parseNodeId`, `walkTree` |
-| `site/js/store.js` | Избранное, корзина, недавние (LS), `cartSummary`, `resolveNode` |
-| `site/js/render.js` | Sidebar, tree, articleList, article, changelog, recent |
-| `site/js/modal.js` | openFavorites / openCart / openProfileSwitcher / openSearch |
-| `site/js/profile.js` | Роль, фракция, `FACTIONS`, `factionInfo` |
-| `site/js/app.js` | Точка входа `app.html` |
-| `site/js/law.js` | Точка входа `law.html` |
-| `site/app.html` | Главная |
-| `site/law.html` | Страница документа (3 колонки) |
-| `site/sw.js` | Service worker (офлайн) |
-| `site/manifest.webmanifest` | Манифест PWA |
+Кратко о проекте
+Что: статичный веб-сайт «Правовая памятка РО», показывает законы с форума
+forum.russia.online в структурированном виде.
 
-### Ключи localStorage
+Стек: Python (парсер) + статичный HTML/CSS/JS (фронт, без фреймворков).
 
-- `ro_memo_profile` — `{role, faction}`
-- `ro_memo_favorites` — массив `nodeId` («ak-14.3»)
-- `ro_memo_cart` — массив `nodeId`
-- `ro_memo_recent` — массив `nodeId` (максимум 8)
+Хостинг: Netlify (только site/).
 
-**Важно:** ключи с подчёркиваниями. Если в LS остались старые ключи вида
-`ro-memo-favorites` (с дефисами) — они от предыдущей версии проекта,
+Данные: 28 документов (УК, КоАП, ПК, ПДД, ТК, Конституция, ФКЗ, ФЗ).
+
+Пайплайн: raw/ → data/ → site/js/data/ → браузер.
+
+Текущее состояние
+Готово (работает)
+Парсер:
+
+run_raw.py — сбор постов с форума (Playwright + сессия).
+
+analyze.py — диагностика структуры raw-файлов.
+
+parse.py — дерево + diff + cache + changelog.
+
+check_penalties.py — валидация штрафов (инверсии, пропуски).
+
+export_to_js.py — конвертер в window.XXX_DATA для фронта.
+
+Типы документов: A (обычный), B (ПДД), C (этика), D (Конституция).
+
+Парсер штрафов:
+
+Регулярка RE_RANGE ловит «от X до Y», включая «от X рублей до Y рублей».
+
+Многочастные статьи — вариант A + вариант B:
+
+penalty статьи остаётся сводным (min…max) — нужен для списка статей;
+
+article.parts — массив частей с точными penalty (вариант B).
+
+RE_SENTENCE_SPLIT режет penalty.raw на предложения по «строчная буква
+
+точка + пробел + любая буква»; точка внутри чисел (2 000.) не считается
+границей.
+
+Сопоставление «предложение ↔ часть» — по порядку (N == M → 1:1,
+N < M → первые N частей, N > M → лишние в последнюю).
+
+Все 28 документов проходят check_penalties.py без ошибок.
+
+Diff + changelog:
+
+parser/cache/<doc_id>.json — снимок предыдущего прогона.
+
+parser/changelog.json — плоский список записей (до 500).
+
+Виды записей: article_added, article_removed, title_changed,
+penalty_changed, text_changed, revision_changed.
+
+На главной показывается топ-5 свежих.
+
+Фронт:
+
+Профиль: гражданский / гос + фракция (ro_memo_profile).
+
+Избранное и корзина (ro_memo_favorites, ro_memo_cart).
+
+Недавние статьи (ro_memo_recent, максимум 8, на главной топ-4).
+
+Changelog на главной.
+
+Тёмная тема с градиентами, слоями, акцентами.
+
+Модалки: избранное, корзина, смена профиля, глобальный поиск.
+
+Глобальный поиск (Ctrl+K) — по номеру, заголовку, тексту статьи,
+с сортировкой по релевантности.
+
+Смена профиля через модалку (без confirm() и без перезагрузки страницы).
+
+Логика «передачи материала»: прокуратура и адвокатура исключены
+(NO_TRANSFER_FACTIONS).
+
+Части статьи — карточки 14.18 ч.N со своим penalty и кнопками ★/🗑.
+В избранное и корзину можно добавлять конкретную часть.
+
+nodeId части — ak-14.18#p1 (решётка как маркер якоря).
+
+parseNodeId возвращает partNum; findArticle для #pN возвращает
+объект части с _isPart: true и ссылкой на родителя.
+
+resolveNode для части возвращает isPart: true, partNum, label
+и penalty части (не статьи).
+
+law.js при переходе по #ak-14.18#p1 открывает статью целиком
+(без авто-скролла к части).
+
+Инфраструктура:
+
+git — репозиторий инициализирован, .gitignore в коммите.
+
+README.md — полная документация пайплайна и скриптов.
+
+shema.json — каноническая схема данных (часть полей пока не реализована).
+
+PWA:
+
+site/manifest.webmanifest — манифест (standalone, тёмная тема, start_url=./app.html).
+
+site/sw.js — service worker, cache-first.
+
+Иконки: site/icons/icon-192.png, site/icons/icon-512.png.
+
+Регистрация SW — в app.html и law.html.
+
+Офлайн-режим работает (при условии, что посетил хотя бы раз).
+
+ВАЖНО: при обновлении данных (после parse.py + export_to_js.py) —
+поднять CACHE_VERSION в site/sw.js (с v1 на v2), иначе браузер
+отдаст старую версию из кэша.
+
+В работе
+(пусто)
+
+Архитектура — где что лежит
+Пайплайн данных
+forum.russia.online
+│ run_raw.py
+▼
+raw/<thread_id>.json + .txt
+│ parse.py (с diff и cache)
+├──► data/<doc_id>.json (актуальное дерево)
+├──► parser/cache/<doc_id>.json (снимок для следующего diff)
+└──► parser/changelog.json (история изменений)
+│ export_to_js.py
+▼
+site/js/data/<doc_id>.js
+site/js/data/_manifest.js
+site/js/data/changelog.js
+│
+▼
+app.html / law.html
+
+Ключевые файлы фронта
+Файл	Что делает
+site/js/data.js	Docs.get, findArticle, allArticles, searchAll, parseNodeId
+site/js/store.js	Избранное, корзина, недавние (LS), cartSummary, resolveNode
+site/js/render.js	Sidebar, tree, articleList, article, changelog, recent
+site/js/modal.js	openFavorites / openCart / openProfileSwitcher / openSearch
+site/js/profile.js	Роль, фракция, FACTIONS, factionInfo
+site/js/app.js	Точка входа app.html
+site/js/law.js	Точка входа law.html
+site/app.html	Главная
+site/law.html	Страница документа (3 колонки)
+site/sw.js	Service worker (офлайн)
+site/manifest.webmanifest	Манифест PWA
+Ключи localStorage
+ro_memo_profile — {role, faction}
+
+ro_memo_favorites — массив nodeId («ak-14.3», «ak-14.18#p1»)
+
+ro_memo_cart — массив nodeId
+
+ro_memo_recent — массив nodeId (максимум 8)
+
+Важно: ключи с подчёркиваниями. Если в LS остались старые ключи вида
+ro-memo-favorites (с дефисами) — они от предыдущей версии проекта,
 их надо вручную удалять через DevTools.
 
----
+Решения, которые мы приняли (и почему)
+Многочастные штрафы — вариант A + вариант B.
 
-## Решения, которые мы приняли (и почему)
+На уровне статьи — сводный penalty (min…max), нужен для
+списка статей в колонке 2.
 
-1. **Многочастные штрафы — вариант A (сжатие в min…max).**
-   Точность по частям теряется, но не надо править вручную.
+На уровне частей — точные penalty через article.parts
+(вариант B). Создаётся, только если в penalty.raw больше одного
+диапазона и в статье ≥2 paragraph с номерами.
 
-2. **Прокуратура и адвокатура не участвуют в передаче материала.**
-   Константа `NO_TRANSFER_FACTIONS = ['prok', 'adv']` в `render.js`.
+nodeId части: ak-14.18#p1 (решётка как маркер якоря).
 
-3. **Локальный поиск в колонке 2 убран.**
-   Есть только глобальный (`Ctrl+K`, кнопка в топбаре).
+При клике на часть в избранном/корзине открывается статья целиком,
+без авто-скролла к конкретной части.
 
-4. **Один общий localStorage для всех профилей.**
+Прокуратура и адвокатура не участвуют в передаче материала.
+Константа NO_TRANSFER_FACTIONS = ['prok', 'adv'] в render.js.
+Прокурор работает по любым делам (надзор), адвокат — защитник.
+Warn-блок «передай материал X» для них не показывается.
 
-5. **`parser/cache/` и `changelog.json` коммитятся в git.**
+Локальный поиск в колонке 2 убран.
+Есть только глобальный (Ctrl+K, кнопка в топбаре). Одна точка входа,
+не дублируется.
 
-6. **Архивные папки в `.gitignore`:** `mockup/`, `raw_backup_*/`.
+Один общий localStorage для всех профилей.
+Избранное, корзина, недавние не разделяются по ролям.
 
-7. **PWA: cache-first + versioning.**
-   При обновлении данных поднимать `CACHE_VERSION` в `site/sw.js`.
+parser/cache/ и changelog.json коммитятся в git.
+Чтобы diff работал на любой машине и история не терялась.
+parser/storage_state.json — не коммитится (это сессия форума).
 
-8. **Единый источник данных о фракциях — `Profile.FACTIONS`.**
-   Больше нет дублей `FACTION_SHORT`/`FACTION_COLOR` в `render.js`.
+Архивные папки в .gitignore:
+mockup/, raw_backup_*/. Локально остаются, в git не идут.
 
-9. **Единый парсер `nodeId` — `Docs.parseNodeId`.**
-   Больше нет дублей в `store.js`.
+PWA: cache-first + versioning.
+Service worker кэширует всё, включая данные. При обновлении данных
+надо поднимать CACHE_VERSION. Cache-first выбран, потому что данные
+у нас обновляются редко, а заходят часто — важнее скорость.
 
-10. **Service Worker отключён на время разработки.**
-    Перед релизом вернуть в `app.html` и `law.html`.
+Части статьи — отдельные сущности для избранного и корзины.
+Пользователь может добавить в избранное или корзину конкретную
+часть многочастной статьи. В корзине это даёт точную сумму штрафа
+(500 + 1 000 + 20 000 = 21 500, а не 500 — 40 000 у статьи целиком).
 
----
+Известные ограничения и TODO
+Не реализовано
+meta.conviction, meta.jurisdiction, meta.resolution, meta.group
+— описаны в shema.json, но парсер их не создаёт.
 
-## Известные ограничения и TODO
+related — связи со статьями других кодексов. Не парсится, но в mockup
+был пример UI. Идея на будущее.
 
-### Не реализовано
+Обработка дублей номеров статей (если в документе две Статья 1. —
+они получают одинаковый node_id, Docs.findArticle найдёт только первую).
 
-- `meta.conviction`, `meta.jurisdiction`, `meta.resolution`, `meta.group`
-  — описаны в `shema.json`, но парсер их не создаёт.
-- `related` — связи со статьями других кодексов.
-- Обработка дублей номеров статей (если в документе две `Статья 1.`).
-- Числа прописью и МРОТ — не парсятся («не менее пяти тысяч», «500 МРОТ»).
-- `config.json`: поля `location`, `blacklist`, `schemas` не используются.
-- **Чистка Python-скриптов** (`check_penalties.py`, `analyze.py`,
-  `parse.py`, `run_raw.py`) — не начата.
-- **Мобильная вёрстка** — не делалась. Есть `@media (max-width: 900px)`,
-  но `layout-3col` на телефоне не перестраивается.
+Числа прописью и МРОТ — не парсятся («не менее пяти тысяч», «500 МРОТ»).
 
-### Потенциальные грабли
+config.json: поля location, blacklist, schemas не используются.
 
-- **Service Worker требует аккуратности.**
-  При обновлении данных — поднять `CACHE_VERSION` в `site/sw.js`.
-  Симптом: обновил закон, прогнал пайплайн, а на сайте всё по-старому.
-  **Лечение:**
-    1. `Ctrl + Shift + R` (жёсткое обновление).
-    2. Если не помогло — DevTools → Application → Service Workers →
-       Unregister всё.
-    3. Application → Storage → Clear site data.
-    4. Перезагрузить.
-  **Сейчас SW отключён на время разработки** — значит, этих проблем не будет,
-  но при релизе — не забыть вернуть и настроить.
+Статьи с категориями лиц (не путать с частями):
 
-- **`file://` не работает с PWA.**
-  Service worker не регистрируется. Нужен локальный сервер:
-  `python -m http.server 8000` в папке `site/`.
+Статья 8.8 КоАП: «гражданину от 20 000 до 50 000; должностному лицу —
+от 50 000 до 100 000; организации — от 100 000 до 250 000». Здесь
+не части, а категории лиц — в статье один paragraph, поэтому
+parts не создаются, penalty остаётся сжатым (20 000 — 250 000).
+Если когда-то понадобится точность по категориям — это будет вариант C,
+отдельная задача.
 
-- **Ошибки при загрузке JS видны в DevTools → Console.**
-  Если что-то не работает — **первым делом** открой консоль.
+Потенциальные грабли
+Service Worker требует аккуратности. При обновлении данных нельзя
+забывать CACHE_VERSION в site/sw.js. Если забыл — браузер отдаёт
+старую версию из кэша, и выглядит это как «сайт не обновляется».
+Симптом: обновил закон, прогнал пайплайн, а на сайте всё по-старому.
+Лечение: поднять CACHE_VERSION, перезагрузить страницу два раза.
 
-### Идеи на будущее
+file:// не работает с PWA. Service worker не регистрируется.
+Для проверки PWA нужен локальный сервер: python -m http.server 8000
+в корне проекта, потом открывать http://localhost:8000/site/app.html.
 
-- **Командная палитра** — расширить `Ctrl+K`: быстрые переходы к документам,
-  команды вроде «открыть корзину».
-- **Подсветка совпадений** в результатах поиска (обернуть в `<mark>`).
-- **Автоматизация пайплайна** — `parser/update_all.py` одной командой
-  (`run_raw → parse → check_penalties → export_to_js`).
-- **Светлая тема** (переключатель).
-- **Экспорт статьи в markdown/PDF** (вместо «Копировать ссылку»).
-- **Кэш документов в браузере** (IndexedDB) — чтобы сайт работал быстрее.
+Идеи на будущее
+Командная палитра — расширить Ctrl+K: быстрые переходы к документам,
+к разделам «Часто нужны» и «Недавние», команды вроде «открыть корзину».
 
----
+Подсветка совпадений в результатах поиска (обернуть в <mark>).
 
-## Как обновлять данные
+Автоматизация пайплайна — parser/update_all.py одной командой
+(run_raw → parse → check_penalties → export_to_js).
 
-### Один закон
+Светлая тема (переключатель).
 
-```powershell
+Экспорт статьи в markdown/PDF (вместо «Копировать ссылку»).
+
+Кэш документов в браузере (IndexedDB) — чтобы сайт работал быстрее.
+
+Вариант C: категории лиц. Для статей, где разные суммы штрафа
+привязаны к гражданину/должностному лицу/организации, а не к частям
+(см. ak-8.8).
+
+Авто-скролл и подсветка части при переходе по #ak-14.18#p1 —
+сейчас открывается статья целиком.
+
+Проверка parts в check_penalties.py — сейчас валидируется
+только penalty статьи, не части.
+
+Как обновлять данные
+Один закон
 cd parser
-python run_raw.py --only 4930        # по thread_id
+python run_raw.py --only 4930 # по thread_id
 python parse.py --only ak
 python check_penalties.py
 python export_to_js.py
+
+Потом — не забыть:
+
+Открыть site/sw.js.
+
+Поднять CACHE_VERSION (например, 'v1' → 'v2').
+
+В браузере — Ctrl+Shift+R (жёсткое обновление).
+
+Если всё ещё старая версия — DevTools → Application → Service Workers →
+Unregister, потом перезагрузить.
+
+Перед полным прогоном (без --only) — если менял структуру data/*.json
+(например, добавлял parts), удали parser/cache/*.json для
+затронутых документов, иначе diff насыпет ложных text_changed.
+
+Дальше — закоммитить:
+
+git add raw/ data/ parser/cache/ parser/changelog.json site/js/data/ site/sw.js
+git commit -m "Обновить КоАП до редакции X"
+
+Добавить новый закон
+Добавить в parser/config.json → threads (mapping thread_id → doc_id),
+в titles (короткое название).
+
+python run_raw.py --only <thread_id>.
+
+python analyze.py — посмотреть тип (A/B/C/D).
+
+python parse.py --only <doc_id>.
+
+python check_penalties.py.
+
+Добавить doc_id в DOC_IDS в parser/export_to_js.py.
+
+python export_to_js.py.
+
+Добавить <script src="js/data/<doc_id>.js"> в app.html и law.html,
+а также doc_id в GROUPS в render.js.
+
+Проверить, что в новом документе корректно собрались parts
+(если есть многочастные статьи): python parse.py --show <doc_id>
+или открыть data/<doc_id>.json.
+
+Добавить имя файла в PRECACHE в site/sw.js.
+
+Поднять CACHE_VERSION.
+
+Проверить на сайте.
+
+Git — текущий статус
+Репозиторий инициализирован, первый коммит сделан.
+
+.gitignore в коммите.
+
+Что коммитим
+raw/, data/, parser/cache/, parser/changelog.json,
+site/js/data/*.js, все скрипты и документация, site/manifest.webmanifest,
+site/sw.js, site/icons/.
+
+parser/parse.py (с split_parts), data/*.json с parts,
+site/js/data.js, site/js/store.js, site/js/render.js,
+site/js/modal.js, site/js/law.js.
+
+Что НЕ коммитим
+parser/storage_state.json (критично — сессия форума).
+
+mockup/, raw_backup_*/ — архив, локально.
+
+__pycache__/, .vscode/, .DS_Store.
+
+Как продолжать в новой сессии
+Если работаешь с ассистентом:
+
+Скинуть README.md + NOTES.md.
+
+Если нужно — приложить конкретные файлы, с которыми работаем
+(например, site/js/render.js или parser/parse.py).
+
+Сказать, что делаем дальше (из списка «Идеи на будущее» или что-то своё).
+
+Контекста в этих двух файлах достаточно, чтобы не объяснять всё с нуля.
