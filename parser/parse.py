@@ -649,7 +649,119 @@ def walk_extract_penalty(node):
     for child in node.get("children", []):
         walk_extract_penalty(child)
 
+# ============================================================
+# Разбиение статьи на части (вариант B)
+# ============================================================
 
+# Разбиваем raw наказания на отдельные предложения.
+# Точка + пробел + заглавная буква = граница предложения.
+# Не трогаем точки внутри чисел (2 000. ) — там после точки пробел и цифра.
+RE_SENTENCE_SPLIT = re.compile(r"(?<=[а-яё])\.\s+(?=[а-яёА-ЯЁ])", re.UNICODE)
+
+# Сколько символов брать в title части
+PART_TITLE_MAX = 60
+
+
+def _split_sentences(raw):
+    """Делит текст наказания на отдельные предложения."""
+    if not raw:
+        return []
+    parts = RE_SENTENCE_SPLIT.split(raw)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _part_title_from_text(text):
+    """Короткий заголовок части — первые N символов текста."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    # Обрезаем по границе слова
+    if len(text) <= PART_TITLE_MAX:
+        return text
+    cut = text[:PART_TITLE_MAX].rsplit(" ", 1)[0]
+    return cut + "…"
+
+
+def _article_has_multiple_ranges(penalty):
+    """Есть ли в penalty.raw больше одного диапазона 'от X до Y'."""
+    raw = (penalty or {}).get("raw", "") or ""
+    if not raw:
+        return False
+    return len(extract_ranges(raw)) > 1
+
+
+def split_parts(article):
+    """
+    Если статья многочастная — создаёт article["parts"].
+    Возвращает True, если parts добавлены.
+    """
+    if article.get("type") != "article":
+        return False
+
+    children = article.get("children", []) or []
+    paragraphs = [
+        c for c in children
+        if c.get("type") == "paragraph" and c.get("number")
+    ]
+    if len(paragraphs) < 2:
+        return False
+
+    penalty = article.get("penalty") or {}
+    if not _article_has_multiple_ranges(penalty):
+        return False
+
+    sentences = _split_sentences(penalty.get("raw", ""))
+    if not sentences:
+        return False
+
+    # Сопоставляем предложения с частями
+    #   N == M  → 1:1
+    #   N < M   → первые N получают, остальные без penalty
+    #   N > M   → лишние приклеиваем к последней части
+    parts = []
+    n_parts = len(paragraphs)
+    n_sent = len(sentences)
+
+    for i, p in enumerate(paragraphs):
+        num = str(p.get("number", "")).strip()
+        text = (p.get("text", "") or "").strip()
+
+        if i < n_sent:
+            if i == n_parts - 1 and n_sent > n_parts:
+                # последняя часть — склеиваем все оставшиеся предложения
+                sent_raw = " ".join(sentences[i:])
+            else:
+                sent_raw = sentences[i]
+            pen = parse_penalty(sent_raw)
+        else:
+            pen = {"raw": "", "types": []}
+
+        part = {
+            "number": num,
+            "label": f"{article.get('number','')} ч.{num}",
+            "title": _part_title_from_text(text),
+            "text": text,
+        }
+        # penalty добавляем только если есть типы
+        if pen.get("types"):
+            part["penalty"] = pen
+
+        parts.append(part)
+
+    # Если ни у одной части нет penalty — не создаём parts
+    if not any(p.get("penalty") for p in parts):
+        return False
+
+    article["parts"] = parts
+    return True
+
+
+def walk_split_parts(node):
+    """Рекурсивно обходит дерево и вызывает split_parts для статей."""
+    if node.get("type") == "article":
+        split_parts(node)
+    for child in node.get("children", []):
+        walk_split_parts(child)
 # ============================================================
 # Главная функция парсинга
 # ============================================================
@@ -690,6 +802,10 @@ def parse_document(raw_data, config=None):
     for n in nodes:
         walk_extract_penalty(n)
 
+    # Вариант B: разбиваем многочастные статьи на parts
+    for n in nodes:
+        walk_split_parts(n)
+
     nodes = cleanup_nodes(nodes)
 
     doc = {
@@ -727,7 +843,6 @@ def _collect_articles(nodes):
 
 
 def _article_signature(article):
-    """Хеш-подпись статьи: title + penalty.raw + склеенный текст пунктов."""
     title = article.get("title", "") or ""
     penalty = article.get("penalty", {}) or {}
     penalty_raw = penalty.get("raw", "") or ""
@@ -741,7 +856,17 @@ def _article_signature(article):
                 walk(n["children"])
     walk(article.get("children", []))
 
-    return title + "||" + penalty_raw + "||" + " ".join(texts)
+    # Подпись частей (вариант B)
+    parts_sig = []
+    for p in article.get("parts", []) or []:
+        parts_sig.append(
+            str(p.get("number", "")) + ":" +
+            str(p.get("label", "")) + ":" +
+            str((p.get("penalty") or {}).get("raw", ""))
+        )
+    parts_str = "|".join(parts_sig)
+
+    return title + "||" + penalty_raw + "||" + " ".join(texts) + "||" + parts_str
 
 
 def diff_documents(old_doc, new_doc):

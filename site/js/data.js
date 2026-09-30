@@ -80,16 +80,35 @@ const Docs = (() => {
   // ----------------------------------------------------------
 
   function findArticle(nodeId) {
-    const parsed = parseNodeId(nodeId);
-    if (!parsed) return null;
+  const parsed = parseNodeId(nodeId);
+  if (!parsed) return null;
 
-    const doc = get(parsed.docId);
-    if (!doc) return null;
+  const doc = get(parsed.docId);
+  if (!doc) return null;
 
-    return walkTree(doc.nodes || [], (n) => {
-      if (n.type === 'article' && n.number === parsed.articleNum) return n;
-    }) || null;
+  const article = walkTree(doc.nodes || [], (n) => {
+    if (n.type === 'article' && n.number === parsed.articleNum) return n;
+  }) || null;
+
+  if (!article) return null;
+
+  // Если запрошена часть — вернуть её (но с пометкой, что это часть,
+  // чтобы render/article могли отличить)
+  if (parsed.partNum) {
+    const parts = article.parts || [];
+    const part = parts.find(p => String(p.number) === String(parsed.partNum));
+    if (!part) return null;
+
+    return {
+      ...part,             // number, label, title, text, penalty
+      _isPart: true,
+      _parentArticle: article,
+      _parentNumber: article.number,
+    };
   }
+
+  return article;
+}
 
   function allArticles(docId) {
     const doc = get(docId);
@@ -107,16 +126,29 @@ const Docs = (() => {
   // Разделитель — первый дефис: docId не может содержать дефис.
   // ----------------------------------------------------------
 
-  function parseNodeId(nodeId) {
-    if (!nodeId || typeof nodeId !== 'string') return null;
-    const dashIdx = nodeId.indexOf('-');
-    if (dashIdx <= 0) return null;
+  // Формат nodeId:
+//   "<docId>-<articleNum>"        — статья целиком, например "ak-14.18"
+//   "<docId>-<articleNum>#p<N>"   — часть статьи, например "ak-14.18#p1"
+function parseNodeId(nodeId) {
+  if (!nodeId || typeof nodeId !== 'string') return null;
+  const dashIdx = nodeId.indexOf('-');
+  if (dashIdx <= 0) return null;
 
-    return {
-      docId: nodeId.substring(0, dashIdx),
-      articleNum: nodeId.substring(dashIdx + 1),
-    };
+  let articlePart = nodeId.substring(dashIdx + 1);
+  let partNum = null;
+
+  const hashIdx = articlePart.indexOf('#p');
+  if (hashIdx >= 0) {
+    partNum = articlePart.substring(hashIdx + 2);
+    articlePart = articlePart.substring(0, hashIdx);
   }
+
+  return {
+    docId: nodeId.substring(0, dashIdx),
+    articleNum: articlePart,
+    partNum, // null или строка "1", "2", ...
+  };
+}
 
   // ============================================================
   // Глобальный поиск

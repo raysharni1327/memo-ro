@@ -46,6 +46,7 @@ const Render = (() => {
 
   const GRAY_FOREIGN = '#3a3a3a';
   const GRAY_COMMON  = '#555';
+  
     // Ограничения отображения
   const RECENT_SHOWN    = 4;  // сколько недавних показывать на главной
   const CHANGELOG_SHOWN = 5;  // сколько изменений показывать на главной
@@ -415,52 +416,49 @@ const Render = (() => {
       </div>`;
     }
 
-    const parts = (found.children || []).filter(c => c.type === 'paragraph' || c.type === 'subparagraph');
-    const partsHtml = parts.map(p =>
-      `<p class="article-text">${p.number ? `<strong>${p.number}.</strong> ` : ''}${p.text || ''}</p>`
-    ).join('');
+        // === Состав ===
+    // Если у статьи есть parts (вариант B) — рендерим их карточками.
+    // Иначе — как раньше: параграфы подряд.
+    let partsHtml = '';
+    if (Array.isArray(found.parts) && found.parts.length) {
+      partsHtml = found.parts.map(p => {
+        const pen = p.penalty;
+        let penHtml = '';
+        if (pen && pen.raw) {
+          const parsed = (pen.types || []).map(renderPenaltyType).join(' · ');
+          penHtml = `<div class="part-penalty">
+            <span class="penalty-raw">${pen.raw}</span>
+            ${parsed ? `<span class="penalty-parsed">${parsed}</span>` : ''}
+          </div>`;
+        }
+                const partNodeId = `${docId}-${found.number}#p${p.number}`;
+        const partInFav  = Store.favHas(partNodeId);
+        const partInCart = Store.cartHas(partNodeId);
 
+        return `<div class="part-card" data-part-node="${partNodeId}">
+          <div class="part-header">
+            <span class="part-label">${p.label || (found.number + ' ч.' + p.number)}</span>
+            ${p.title ? `<span class="part-title">${p.title}</span>` : ''}
+            <span class="part-actions">
+              <button class="row-btn ${partInFav ? 'row-btn-active' : ''}" data-fav data-node="${partNodeId}">${partInFav ? '★' : '☆'}</button>
+              <button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">🗑</button>
+            </span>
+          </div>
+          <div class="part-body">${p.text || ''}</div>
+          ${penHtml}
+        </div>`;
+      }).join('');
+    } else {
+      const paragraphs = (found.children || []).filter(c => c.type === 'paragraph' || c.type === 'subparagraph');
+      partsHtml = paragraphs.map(p =>
+        `<p class="article-text">${p.number ? `<strong>${p.number}.</strong> ` : ''}${p.text || ''}</p>`
+      ).join('');
+    }
+
+       // Сводный penalty статьи показываем только если нет parts.
     let penaltyHtml = '';
-    if (found.penalty && found.penalty.raw) {
-      const parsed = (found.penalty.types || []).map(t => {
-        if (t.type === 'штраф') {
-          let range;
-          if (t.from && t.to) {
-            range = `${fmt(t.from)} — ${fmt(t.to)} ₽`;
-          } else if (t.from) {
-            range = `от ${fmt(t.from)} ₽`;
-          } else if (t.to) {
-            range = `до ${fmt(t.to)} ₽`;
-          } else {
-            range = 'штраф';
-          }
-          return `Штраф · ${range}`;
-        }
-        if (t.type === 'лишение свободы') {
-          if (t.to) return `Лишение свободы · до ${t.to} ${t.unit || ''}`.trim();
-          return 'Лишение свободы';
-        }
-        if (t.type === 'арест') {
-          if (t.to) return `Арест · до ${t.to} ${t.unit || 'суток'}`;
-          return 'Арест';
-        }
-        if (t.type === 'лишение права') {
-          if (t.to) return `Лишение права · до ${t.to} ${t.unit || ''}`.trim();
-          return 'Лишение права';
-        }
-        if (t.type === 'конфискация') return 'Конфискация';
-        if (t.type === 'предупреждение') return 'Предупреждение';
-        if (t.type === 'обязательные работы') {
-          if (t.to) return `Обязательные работы · до ${t.to} ${t.unit || ''}`.trim();
-          return 'Обязательные работы';
-        }
-        if (t.type === 'приостановление деятельности') {
-          if (t.to) return `Приостановление деятельности · до ${t.to} ${t.unit || ''}`.trim();
-          return 'Приостановление деятельности';
-        }
-        return t.type;
-      }).join(' · ');
-
+    if (!(found.parts && found.parts.length) && found.penalty && found.penalty.raw) {
+      const parsed = (found.penalty.types || []).map(renderPenaltyType).join(' · ');
       penaltyHtml = `<div class="penalty-block">
         <span class="penalty-raw">${found.penalty.raw}</span>
         ${parsed ? `<span class="penalty-parsed">${parsed}</span>` : ''}
@@ -518,38 +516,55 @@ const Render = (() => {
 
     // === Обработчики ===
 
-    const favBtn = el.querySelector('[data-fav]');
-    const cartBtn = el.querySelector('[data-cart]');
-    const copyBtn = el.querySelector('[data-copy]');
+        el.addEventListener('click', (e) => {
+      const favBtn  = e.target.closest('[data-fav]');
+      const cartBtn = e.target.closest('[data-cart]');
+      const copyBtn = e.target.closest('[data-copy]');
 
-    favBtn?.addEventListener('click', () => {
-      const added = Store.favToggle(nodeId);
-      favBtn.classList.toggle('is-active', added);
-      favBtn.querySelector('span:nth-child(2)').textContent = added ? 'В избранном' : 'В избранное';
-      Modal.updateCounters();
-      refreshRowButtons(nodeId);
-    });
+      if (favBtn) {
+        const id = favBtn.dataset.node;
+        const added = Store.favToggle(id);
+        favBtn.classList.toggle('is-active', added);
+        favBtn.classList.toggle('row-btn-active', added);
+        // Обновить текст: там, где есть span (большая кнопка), меняем label;
+        // в маленькой кнопке меняем символ ★/☆
+        const label = favBtn.querySelector('span:nth-child(2)');
+        if (label) {
+          label.textContent = added ? 'В избранном' : 'В избранное';
+        } else {
+          favBtn.textContent = added ? '★' : '☆';
+        }
+        Modal.updateCounters();
+        refreshRowButtons(id);
+        return;
+      }
 
-    cartBtn?.addEventListener('click', () => {
-      const added = Store.cartToggle(nodeId);
-      cartBtn.classList.toggle('is-active', added);
-      cartBtn.querySelector('span:nth-child(2)').textContent = added ? 'В корзине' : 'В корзину';
-      Modal.updateCounters();
-      refreshRowButtons(nodeId);
-    });
+      if (cartBtn) {
+        const id = cartBtn.dataset.node;
+        const added = Store.cartToggle(id);
+        cartBtn.classList.toggle('is-active', added);
+        cartBtn.classList.toggle('row-btn-active', added);
+        const label = cartBtn.querySelector('span:nth-child(2)');
+        if (label) {
+          label.textContent = added ? 'В корзине' : 'В корзину';
+        }
+        Modal.updateCounters();
+        refreshRowButtons(id);
+        return;
+      }
 
-    copyBtn?.addEventListener('click', () => {
-      const url = `${location.origin}${location.pathname}#${nodeId}`;
-      navigator.clipboard.writeText(url);
-
-      // Временная смена текста кнопки вместо alert()
-      const label = copyBtn.querySelector('span:nth-child(2)');
-      const original = label ? label.textContent : null;
-      if (label) label.textContent = 'Скопировано ✓';
-
-      setTimeout(() => {
-        if (label && original) label.textContent = original;
-      }, 1500);
+      if (copyBtn) {
+        const id = copyBtn.dataset.node;
+        const url = `${location.origin}${location.pathname}#${id}`;
+        navigator.clipboard.writeText(url);
+        const label = copyBtn.querySelector('span:nth-child(2)');
+        const original = label ? label.textContent : null;
+        if (label) label.textContent = 'Скопировано ✓';
+        setTimeout(() => {
+          if (label && original) label.textContent = original;
+        }, 1500);
+        return;
+      }
     });
   }
 
@@ -593,7 +608,7 @@ const Render = (() => {
   }
 
   // Форматирование чисел: 30000 → "30 000"
-  function fmt(n) {
+    function fmt(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   }
 
@@ -605,7 +620,43 @@ const Render = (() => {
     return `rgba(${r},${g},${b},${a})`;
   }
 
-      return {
+  // Рендер одного типа наказания (штраф/арест/...).
+  // Возвращает строку вида "Штраф · 500 — 2 000 ₽" или "Арест · до 10 суток".
+  function renderPenaltyType(t) {
+    if (t.type === 'штраф') {
+      let range;
+      if (t.from && t.to)      range = `${fmt(t.from)} — ${fmt(t.to)} ₽`;
+      else if (t.from)         range = `от ${fmt(t.from)} ₽`;
+      else if (t.to)           range = `до ${fmt(t.to)} ₽`;
+      else                     range = 'штраф';
+      return `Штраф · ${range}`;
+    }
+    if (t.type === 'лишение свободы') {
+      if (t.to) return `Лишение свободы · до ${t.to} ${t.unit || ''}`.trim();
+      return 'Лишение свободы';
+    }
+    if (t.type === 'арест') {
+      if (t.to) return `Арест · до ${t.to} ${t.unit || 'суток'}`;
+      return 'Арест';
+    }
+    if (t.type === 'лишение права') {
+      if (t.to) return `Лишение права · до ${t.to} ${t.unit || ''}`.trim();
+      return 'Лишение права';
+    }
+    if (t.type === 'конфискация') return 'Конфискация';
+    if (t.type === 'предупреждение') return 'Предупреждение';
+    if (t.type === 'обязательные работы') {
+      if (t.to) return `Обязательные работы · до ${t.to} ${t.unit || ''}`.trim();
+      return 'Обязательные работы';
+    }
+    if (t.type === 'приостановление деятельности') {
+      if (t.to) return `Приостановление деятельности · до ${t.to} ${t.unit || ''}`.trim();
+      return 'Приостановление деятельности';
+    }
+    return t.type;
+  }
+
+  return {
     sidebar, popular, recent, changelog,
     tree, articleList, article,
     docShort, factionShort, factionColor,

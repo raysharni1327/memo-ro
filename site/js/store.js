@@ -95,23 +95,40 @@ const Store = (() => {
   const parseNodeId = Docs.parseNodeId;
 
   function resolveNode(nodeId) {
-    const p = parseNodeId(nodeId);
-    if (!p) return null;
+  const p = parseNodeId(nodeId);
+  if (!p) return null;
 
-    const article = Docs.findArticle(nodeId);
-    if (!article) {
-      return { nodeId, docId: p.docId, articleNum: p.articleNum, error: true };
-    }
+  const found = Docs.findArticle(nodeId);
+  if (!found) {
+    return { nodeId, docId: p.docId, articleNum: p.articleNum, error: true };
+  }
 
+  // Часть статьи (вариант B)
+  if (p.partNum && found._isPart) {
     return {
       nodeId,
       docId: p.docId,
-      articleNum: p.articleNum,
-      title: article.title || '',
-      penalty: article.penalty || null,
-      meta: article.meta || {},
+      articleNum: p.articleNum,          // "14.18"
+      partNum: p.partNum,                // "1"
+      label: found.label || `${p.articleNum} ч.${p.partNum}`,
+      title: found.title || '',
+      penalty: found.penalty || null,
+      meta: (found._parentArticle && found._parentArticle.meta) || {},
+      isPart: true,
     };
   }
+
+  // Статья целиком
+  return {
+    nodeId,
+    docId: p.docId,
+    articleNum: p.articleNum,
+    title: found.title || '',
+    penalty: found.penalty || null,
+    meta: found.meta || {},
+    isPart: false,
+  };
+}
 
   // ----------------------------------------------------------
   // Агрегация корзины

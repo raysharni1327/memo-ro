@@ -220,15 +220,28 @@ function parseHash() {
   }
 
   const [docAndPath, articleNum] = splitArticle(hash);
-  LawState.articleNum = articleNum;
+  LawState.articleNum = articleNum;   // уже без #pN
 
   const parts = docAndPath.split('/');
   LawState.docId = parts[0];
   LawState.nodePath = parts.length > 1 ? parts.slice(1) : null;
 }
 
+// Разбор хвоста хеша:
+//   "ak"                 → [docAndPath="ak",                 articleNum=null]
+//   "ak-14.18"           → [docAndPath="ak",                 articleNum="14.18"]
+//   "ak-14.18#p1"        → [docAndPath="ak",                 articleNum="14.18"]   (partNum отбрасываем)
+//   "ak/s1/c2-14.18#p1"  → [docAndPath="ak/s1/c2",           articleNum="14.18"]
 function splitArticle(hash) {
-  const parts = hash.split('/');
+  // 1. Отрезаем суффикс части "#pN"
+  let cleanHash = hash;
+  const hashIdx = hash.indexOf('#p');
+  if (hashIdx >= 0) {
+    cleanHash = hash.substring(0, hashIdx);
+  }
+
+  // 2. Ищем "номер статьи" в хвосте (после последнего "/" и после дефиса)
+  const parts = cleanHash.split('/');
   const tail = parts[parts.length - 1];
   const dashIdx = tail.indexOf('-');
 
@@ -239,7 +252,7 @@ function splitArticle(hash) {
       return [parts.join('/'), num];
     }
   }
-  return [hash, null];
+  return [cleanHash, null];
 }
 
 function updateHash() {

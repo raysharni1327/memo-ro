@@ -51,10 +51,11 @@ const Modal = (() => {
     if (!list.length) {
       html = `<div class="empty-hint">Избранных статей пока нет. Нажми ★ у статьи, чтобы добавить её сюда.</div>`;
     } else {
-      html = `<ul class="modal-list">` + list.map(nodeId => {
+            html = `<ul class="modal-list">` + list.map(nodeId => {
         const it = Store.resolveNode(nodeId);
         if (!it || it.error) return '';
-        return renderListItem(nodeId, it.articleNum, it.title, Render.docShort(it.docId));
+        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+        return renderListItem(nodeId, numLabel, it.title, Render.docShort(it.docId));
       }).join('') + `</ul>`;
     }
 
@@ -102,9 +103,10 @@ const Modal = (() => {
         </div>`;
       }
 
-      const itemsHtml = summary.items.map(it =>
-        renderListItem(it.nodeId, it.articleNum, it.title, Render.docShort(it.docId))
-      ).join('');
+            const itemsHtml = summary.items.map(it => {
+        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+        return renderListItem(it.nodeId, numLabel, it.title, Render.docShort(it.docId));
+      }).join('');
 
       html = `
         <div class="cart-summary">${aggHtml || '<div class="cart-agg"><span class="cart-agg-label">Наказания</span><span class="cart-agg-value">нет данных</span></div>'}</div>
@@ -363,7 +365,10 @@ const Modal = (() => {
 
     copyNums?.addEventListener('click', () => {
       const summary = Store.cartSummary();
-      const text = summary.items.map(it => `${Render.docShort(it.docId)} ${it.articleNum}`).join('\n');
+            const text = summary.items.map(it => {
+        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+        return `${Render.docShort(it.docId)} ${numLabel}`;
+      }).join('\n');
       try {
         navigator.clipboard.writeText(text);
       } catch (e) {
@@ -434,7 +439,8 @@ const Modal = (() => {
     lines.push('');
 
     for (const it of summary.items) {
-      lines.push(`${Render.docShort(it.docId)} ${it.articleNum}. ${it.title}`);
+            const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+      lines.push(`${Render.docShort(it.docId)} ${numLabel}. ${it.title}`);
       if (it.penalty && it.penalty.raw) {
         lines.push(`    ${it.penalty.raw}`);
       }
