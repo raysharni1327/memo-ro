@@ -6,6 +6,10 @@ const Modal = (() => {
 
   let overlayEl = null;
 
+  // ----------------------------------------------------------
+  // Базовое открытие / закрытие
+  // ----------------------------------------------------------
+
   function ensureOverlay() {
     if (overlayEl) return overlayEl;
     overlayEl = document.createElement('div');
@@ -48,18 +52,12 @@ const Modal = (() => {
       html = `<ul class="modal-list">` + list.map(nodeId => {
         const it = Store.resolveNode(nodeId);
         if (!it || it.error) return '';
-        const docShort = Render.docShort(it.docId);
-        return `<li class="modal-list-item" data-node="${nodeId}">
-          <span class="modal-doc doc-plate">${docShort}</span>
-          <span class="modal-num">${it.articleNum}</span>
-          <span class="modal-title-text">${it.title}</span>
-          <button class="modal-remove" data-remove="${nodeId}">✕</button>
-        </li>`;
+        return renderListItem(nodeId, it.articleNum, it.title, Render.docShort(it.docId));
       }).join('') + `</ul>`;
     }
 
     open(html, `Избранное (${Store.favCount()})`);
-    attachListHandlers();
+    attachListHandlers('fav');
   }
 
   // === Корзина ===
@@ -82,17 +80,9 @@ const Modal = (() => {
       }
 
       if (summary.hasFine) {
-        let range;
-        if (summary.fineMin && summary.fineMax) {
-          range = `${formatMoney(summary.fineMin)} — ${formatMoney(summary.fineMax)} ₽`;
-        } else if (summary.fineMin) {
-          range = `от ${formatMoney(summary.fineMin)} ₽`;
-        } else {
-          range = `до ${formatMoney(summary.fineMax)} ₽`;
-        }
         aggHtml += `<div class="cart-agg">
           <span class="cart-agg-label">Штраф</span>
-          <span class="cart-agg-value">${range}</span>
+          <span class="cart-agg-value">${formatFineRange(summary)}</span>
         </div>`;
       }
 
@@ -110,15 +100,9 @@ const Modal = (() => {
         </div>`;
       }
 
-      const itemsHtml = summary.items.map(it => {
-        const docShort = Render.docShort(it.docId);
-        return `<li class="modal-list-item" data-node="${it.nodeId}">
-          <span class="modal-doc doc-plate">${docShort}</span>
-          <span class="modal-num">${it.articleNum}</span>
-          <span class="modal-title-text">${it.title}</span>
-          <button class="modal-remove" data-remove="${it.nodeId}">✕</button>
-        </li>`;
-      }).join('');
+      const itemsHtml = summary.items.map(it =>
+        renderListItem(it.nodeId, it.articleNum, it.title, Render.docShort(it.docId))
+      ).join('');
 
       html = `
         <div class="cart-summary">${aggHtml || '<div class="cart-agg"><span class="cart-agg-label">Наказания</span><span class="cart-agg-value">нет данных</span></div>'}</div>
@@ -132,7 +116,7 @@ const Modal = (() => {
     }
 
     open(html, `Корзина (${Store.cartCount()})`);
-    attachListHandlers();
+    attachListHandlers('cart');
     attachCartHandlers();
   }
 
@@ -322,8 +306,9 @@ const Modal = (() => {
 
   // === Обработчики общих списков ===
 
-  function attachListHandlers() {
-    const isFav = overlayEl.querySelector('.modal-title').textContent.startsWith('Избранное');
+  function attachListHandlers(kind) {
+    // kind: 'fav' | 'cart'
+    const isFav = kind === 'fav';
 
     overlayEl.querySelectorAll('.modal-list-item').forEach(item => {
       item.addEventListener('click', (e) => {
@@ -366,15 +351,23 @@ const Modal = (() => {
 
     copyFull?.addEventListener('click', () => {
       const summary = Store.cartSummary();
-      navigator.clipboard.writeText(formatCartFull(summary));
-      alert('Скопировано в буфер обмена.');
+      try {
+        navigator.clipboard.writeText(formatCartFull(summary));
+      } catch (e) {
+        console.warn('Не удалось скопировать', e);
+      }
+      flashButton(copyFull, 'Скопировано ✓');
     });
 
     copyNums?.addEventListener('click', () => {
       const summary = Store.cartSummary();
       const text = summary.items.map(it => `${Render.docShort(it.docId)} ${it.articleNum}`).join('\n');
-      navigator.clipboard.writeText(text);
-      alert('Скопировано в буфер обмена.');
+      try {
+        navigator.clipboard.writeText(text);
+      } catch (e) {
+        console.warn('Не удалось скопировать', e);
+      }
+      flashButton(copyNums, 'Скопировано ✓');
     });
 
     clearBtn?.addEventListener('click', () => {
@@ -390,10 +383,40 @@ const Modal = (() => {
     });
   }
 
+  // === Общие рендеры ===
+
+  // Один элемент списка (используется в избранном и корзине)
+  function renderListItem(nodeId, articleNum, title, docShortName) {
+    return `<li class="modal-list-item" data-node="${nodeId}">
+      <span class="modal-doc doc-plate">${docShortName}</span>
+      <span class="modal-num">${articleNum}</span>
+      <span class="modal-title-text">${title}</span>
+      <button class="modal-remove" data-remove="${nodeId}">✕</button>
+    </li>`;
+  }
+
+  // Диапазон штрафа: "1 000 — 5 000 ₽" / "от 1 000 ₽" / "до 5 000 ₽"
+  function formatFineRange(summary) {
+    if (summary.fineMin && summary.fineMax) {
+      return `${formatMoney(summary.fineMin)} — ${formatMoney(summary.fineMax)} ₽`;
+    }
+    if (summary.fineMin) return `от ${formatMoney(summary.fineMin)} ₽`;
+    if (summary.fineMax) return `до ${formatMoney(summary.fineMax)} ₽`;
+    return '';
+  }
+
   // === Утилиты ===
 
   function formatMoney(n) {
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  }
+
+  // Временно меняет текст кнопки (вместо alert)
+  function flashButton(btn, text, ms = 1500) {
+    if (!btn) return;
+    const original = btn.textContent;
+    btn.textContent = text;
+    setTimeout(() => { btn.textContent = original; }, ms);
   }
 
   function formatCartFull(summary) {
