@@ -32,15 +32,7 @@ const Render = (() => {
 
   const CODEX_IDS = ['uk', 'ak', 'pk', 'pdd'];
 
-  const FACTION_SHORT = {
-    fsb: 'ФСБ', mvd: 'МВД', sk: 'СК', vs: 'ВС',
-    gibdd: 'ГИБДД', fso: 'ФСО', prok: 'ПРОК.', adv: 'АДВ.',
-  };
 
-  const FACTION_COLOR = {
-    fsb: '#e94a4a', mvd: '#3b82f6', sk: '#8b5cf6', vs: '#22c55e',
-    gibdd: '#f97316', fso: '#ea580c', prok: '#06b6d4', adv: '#10b981',
-  };
 
   const MARK_TO_FACTION = {
     'Ф': 'fsb', 'Р': 'mvd', 'С': 'sk', 'В': 'vs',
@@ -57,8 +49,9 @@ const Render = (() => {
 
   function iconFor(docId)    { return ICONS[docId] || '🔵'; }
   function docShort(docId)   { return DOC_SHORT[docId] || docId.toUpperCase(); }
-  function factionShort(f)   { return FACTION_SHORT[f] || f; }
-  function factionColor(f)   { return FACTION_COLOR[f] || '#888'; }
+  // Данные о фракциях — в Profile.FACTIONS (единый источник)
+  function factionShort(f)   { return Profile.FACTIONS[f]?.short || f; }
+  function factionColor(f)   { return Profile.FACTIONS[f]?.color || '#888'; }
   function markToFaction(m)  { return MARK_TO_FACTION[m] || null; }
 
   // === Главная: боковая панель ===
@@ -269,52 +262,37 @@ const Render = (() => {
 
   // === Логика «моя / чужая / общая» ===
 
-  function isCommon(article) {
+  // «Эффективные» метки статьи: фракции, которые реально могут работать.
+  // Прокуратура и адвокатура исключены — они не участвуют в передаче.
+  // Если массив пуст — статья считается общей.
+  function effectiveMarks(article) {
     const marks = (article.meta && article.meta.marks) || [];
-    if (marks.length === 0) return true;
-    // Если все метки — фракции без передачи (П, Адв), статья фактически общая
-    const effective = marks
+    return marks
       .map(markToFaction)
       .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
-    return effective.length === 0;
+  }
+
+  function isCommon(article) {
+    return effectiveMarks(article).length === 0;
   }
 
   function isMine(article, myFaction) {
-    // Прокурор и адвокат — «своя» статья для них всегда (по логике игры)
+    // Прокурор и адвокат — «своя» статья для них всегда
     if (NO_TRANSFER_FACTIONS.includes(myFaction)) return true;
 
-    const marks = (article.meta && article.meta.marks) || [];
-    if (marks.length === 0) return true;
-
-    // Если статья помечена только П / Адв — она общая, а не чужая
-    const effective = marks
-      .map(markToFaction)
-      .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
-    if (effective.length === 0) return true;
-
-    return effective.includes(myFaction);
+    const eff = effectiveMarks(article);
+    return eff.length === 0 || eff.includes(myFaction);
   }
 
   function transferTo(article, myFaction) {
-    // Прокурор и адвокат не участвуют в передаче — они могут всё / защищают всех
+    // Прокурор и адвокат не участвуют в передаче
     if (NO_TRANSFER_FACTIONS.includes(myFaction)) return null;
 
-    const marks = (article.meta && article.meta.marks) || [];
-    if (marks.length === 0) return null;
+    const eff = effectiveMarks(article);
+    if (eff.length === 0) return null;        // статья общая
+    if (eff.includes(myFaction)) return null; // статья моя
 
-    // Отбрасываем метки фракций без передачи: П (прокуратура) и Адв (адвокатура)
-    const effective = marks
-      .map(markToFaction)
-      .filter(f => f && !NO_TRANSFER_FACTIONS.includes(f));
-
-    // Если после фильтрации ничего не осталось — считаем статью общей
-    if (effective.length === 0) return null;
-
-    // Если одна из оставшихся меток — моя, передавать не надо
-    if (effective.includes(myFaction)) return null;
-
-    // Иначе передаём первому, кто может работать
-    return effective[0];
+    return eff[0];
   }
 
   // === law.html: список статей ===
