@@ -46,6 +46,10 @@ const Render = (() => {
 
   const GRAY_FOREIGN = '#3a3a3a';
   const GRAY_COMMON  = '#555';
+    // Ограничения отображения
+  const RECENT_SHOWN    = 4;  // сколько недавних показывать на главной
+  const CHANGELOG_SHOWN = 5;  // сколько изменений показывать на главной
+  const STARS_MAX       = 5;  // максимум звёзд приоритета
 
   function iconFor(docId)    { return ICONS[docId] || '🔵'; }
   function docShort(docId)   { return DOC_SHORT[docId] || docId.toUpperCase(); }
@@ -114,7 +118,7 @@ const Render = (() => {
     if (!el) return;
 
     const list = Store.recentList();
-    const shown = list.slice(0, 4);
+    const shown = list.slice(0, RECENT_SHOWN);
 
     if (!shown.length) {
       el.innerHTML = `
@@ -156,7 +160,7 @@ const Render = (() => {
       return;
     }
 
-    const shown = entries.slice(0, 5);
+    const shown = entries.slice(0, CHANGELOG_SHOWN);
 
     el.innerHTML = shown.map(e => {
       const docShortName = docShort(e.doc_id);
@@ -172,11 +176,13 @@ const Render = (() => {
         ? `<span class="changelog-num">${num}</span>`
         : '';
 
-      return `<li onclick="location.href='${href}'">
-        <span class="changelog-date">${shortDate(date)}</span>
-        <span class="changelog-doc doc-plate">${docShortName}</span>
-        ${numHtml}
-        <span class="changelog-text">${text}</span>
+      return `<li>
+        <a href="${href}" class="changelog-link">
+          <span class="changelog-date">${shortDate(date)}</span>
+          <span class="changelog-doc doc-plate">${docShortName}</span>
+          ${numHtml}
+          <span class="changelog-text">${text}</span>
+        </a>
       </li>`;
     }).join('');
   }
@@ -393,7 +399,8 @@ const Render = (() => {
     const stars = found.meta && found.meta.priorityStars;
     let starsHtml = '';
     if (stars) {
-      starsHtml = '★'.repeat(stars) + `<span class="stars-dim">${'★'.repeat(Math.max(0, 5 - stars))}</span>`;
+      starsHtml = '★'.repeat(stars)
+        + `<span class="stars-dim">${'★'.repeat(Math.max(0, STARS_MAX - stars))}</span>`;
     }
 
     let warnHtml = '';
@@ -534,7 +541,15 @@ const Render = (() => {
     copyBtn?.addEventListener('click', () => {
       const url = `${location.origin}${location.pathname}#${nodeId}`;
       navigator.clipboard.writeText(url);
-      alert('Ссылка скопирована: ' + url);
+
+      // Временная смена текста кнопки вместо alert()
+      const label = copyBtn.querySelector('span:nth-child(2)');
+      const original = label ? label.textContent : null;
+      if (label) label.textContent = 'Скопировано ✓';
+
+      setTimeout(() => {
+        if (label && original) label.textContent = original;
+      }, 1500);
     });
   }
 
@@ -590,7 +605,7 @@ const Render = (() => {
     return `rgba(${r},${g},${b},${a})`;
   }
 
-    return {
+      return {
     sidebar, popular, recent, changelog,
     tree, articleList, article,
     docShort, factionShort, factionColor,

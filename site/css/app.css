@@ -1379,3 +1379,8 @@ details[open] > .nav-title { color: var(--text); }
 }
 .empty-hint--padded { padding: 20px; }
 .empty-hint--mt40   { margin-top: 40px; }
+.changelog-link {
+  display: contents;   /* чтобы <a> не ломал flex/grid родителя */
+  color: inherit;
+  text-decoration: none;
+}
