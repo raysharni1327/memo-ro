@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Правовая памятка</title>
 <link rel="stylesheet" href="css/app.css">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f0f11">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Памятка">
 </head>
 <body class="app-body">
 
@@ -17,11 +27,11 @@
     </div>
   </div>
 
-  <div class="search">
+  <button class="search-btn" id="global-search" type="button">
     <span class="search-icon">🔍</span>
-    <input type="text" id="global-search" placeholder="Поиск…" />
+    <span class="search-btn-text">Поиск по всем документам…</span>
     <span class="search-kbd">Ctrl+K</span>
-  </div>
+  </button>
 
   <div class="topbar-actions">
     <button class="icon-btn" title="Избранное" id="btn-fav">
@@ -52,13 +62,6 @@
 
   <!-- КОЛОНКА 2: список статей -->
   <section class="col-list">
-    <div class="list-header">
-      <div class="list-search">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="list-search-input" placeholder="Поиск по статьям…" />
-      </div>
-    </div>
-
     <div class="list-subheader">
       <div class="list-count" id="list-count">—</div>
       <button class="list-reset" id="list-reset" style="display:none;">Показать все статьи</button>
@@ -115,5 +118,17 @@
 <script src="js/render.js"></script>
 <script src="js/modal.js"></script>
 <script src="js/law.js"></script>
+
+<script>
+  // Регистрация service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('Service Worker не зарегистрирован:', err);
+      });
+    });
+  }
+</script>
+
 </body>
 </html>

@@ -1,6 +1,5 @@
 // ============================================================
 // Страница закона: law.html#<doc_id>[/<node>][-<article>]
-// Примеры: #uk, #uk/r4, #uk/r4/c6, #uk-6.2, #uk/r4-6.2
 // ============================================================
 
 const LawState = {
@@ -68,11 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
       `<div class="empty-hint" style="margin-top: 40px;">Выбери статью слева.</div>`;
   });
 
-  // === Поиск ===
-  document.getElementById('list-search-input').addEventListener('input', (e) => {
-    renderList(e.target.value);
-  });
-
   // === Кнопка "Показать все статьи" ===
   document.getElementById('list-reset').addEventListener('click', () => {
     LawState.nodePath = null;
@@ -122,11 +116,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-fav')?.addEventListener('click', () => Modal.openFavorites());
   document.getElementById('btn-cart')?.addEventListener('click', () => Modal.openCart());
 
-  // === Смена профиля — через модалку, без confirm() ===
+    // === Глобальный поиск ===
+  document.getElementById('global-search')?.addEventListener('click', () => Modal.openSearch());
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      Modal.openSearch();
+    }
+  });
+
+  // === Смена профиля ===
   document.getElementById('switch-profile')?.addEventListener('click', () => {
     Modal.openProfileSwitcher(() => {
       updateHeader(Profile.get());
-      // перерисовать список статей (цвета фракций) и текущую статью (warn-block)
       if (LawState.docId) {
         renderList();
         if (LawState.articleNum) {
@@ -193,9 +196,9 @@ function updateHash() {
   history.replaceState(null, '', '#' + hash);
 }
 
-function renderList(query = '') {
-  const articles = getFilteredArticles(LawState.docId, LawState.nodePath, query);
-  Render.articleList(LawState.docId, articles, query);
+function renderList() {
+  const articles = getFilteredArticles(LawState.docId, LawState.nodePath);
+  Render.articleList(LawState.docId, articles);
 
   const resetBtn = document.getElementById('list-reset');
   resetBtn.style.display = (LawState.nodePath && LawState.nodePath.length) ? 'inline-block' : 'none';
@@ -203,21 +206,12 @@ function renderList(query = '') {
   if (LawState.articleNum) highlightActiveArticle(LawState.articleNum);
 }
 
-function getFilteredArticles(docId, nodePath, query) {
+function getFilteredArticles(docId, nodePath) {
   let articles = Docs.allArticles(docId);
 
   if (nodePath && nodePath.length) {
     const node = findNode(docId, nodePath);
     if (node) articles = collectArticles(node);
-  }
-
-  if (query) {
-    const q = query.toLowerCase();
-    articles = articles.filter(a =>
-      (a.number || '').toLowerCase().includes(q) ||
-      (a.title || '').toLowerCase().includes(q) ||
-      (a.children || []).some(c => (c.text || '').toLowerCase().includes(q))
-    );
   }
 
   return articles;
