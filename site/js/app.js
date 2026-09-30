@@ -2,6 +2,12 @@
 // Точка входа главной страницы.
 // ============================================================
 
+// Цвета индикатора профиля (совпадают с акцентами CSS)
+const DOT_COLORS = {
+  civil: '#8b5cf6',
+  gov:   '#3b82f6',
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 
   const profile = Profile.get();
@@ -10,62 +16,76 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  updateHeader(profile);
+  refreshUI(profile);
+  bindHeaderButtons();
+  bindHotkeys();
+});
 
+// ------------------------------------------------------------
+// Обновление всего UI под текущий профиль.
+// Вызывается при загрузке и при смене профиля.
+// ------------------------------------------------------------
+function refreshUI(profile = Profile.get()) {
+  updateHeader(profile);
   Render.sidebar();
   Render.popular();
   Render.recent();
   Render.changelog();
-
   Modal.updateCounters();
+}
 
-  // Кнопки в шапке
-  document.getElementById('btn-fav').addEventListener('click', () => Modal.openFavorites());
-  document.getElementById('btn-cart').addEventListener('click', () => Modal.openCart());
+// ------------------------------------------------------------
+// Обработчики кнопок в шапке.
+// ------------------------------------------------------------
+function bindHeaderButtons() {
+  const fav = document.getElementById('btn-fav');
+  const cart = document.getElementById('btn-cart');
+  const search = document.getElementById('global-search');
+  const switcher = document.getElementById('switch-profile');
 
-  // Глобальный поиск: кнопка вместо input
-  document.getElementById('global-search').addEventListener('click', () => Modal.openSearch());
+  if (fav)      fav.addEventListener('click', () => Modal.openFavorites());
+  if (cart)     cart.addEventListener('click', () => Modal.openCart());
+  if (search)   search.addEventListener('click', () => Modal.openSearch());
 
-  // Ctrl+K — открыть поиск
+  if (switcher) {
+    switcher.addEventListener('click', () => {
+      Modal.openProfileSwitcher(() => refreshUI());
+    });
+  }
+}
+
+// ------------------------------------------------------------
+// Горячие клавиши.
+// ------------------------------------------------------------
+function bindHotkeys() {
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       Modal.openSearch();
     }
   });
+}
 
-  // Смена профиля
-  document.getElementById('switch-profile').addEventListener('click', () => {
-    Modal.openProfileSwitcher(() => {
-      updateHeader(Profile.get());
-      Render.sidebar();
-      Render.popular();
-      Render.recent();
-      Render.changelog();
-    });
-  });
-
-});
-
+// ------------------------------------------------------------
+// Обновление шапки: метка и цвет индикатора профиля.
+// ------------------------------------------------------------
 function updateHeader(profile) {
   const label = document.getElementById('profile-label');
   const dot = document.getElementById('profile-dot');
   if (!label || !dot) return;
 
+  let text, color;
+
   if (profile.role === 'civil') {
-    label.textContent = 'Гражданский';
-    dot.style.background = '#8b5cf6';
-    dot.style.color = '#8b5cf6';
-    return;
-  }
-  const info = Profile.factionInfo();
-  if (info) {
-    label.textContent = `Гос: ${info.short}`;
-    dot.style.background = info.color;
-    dot.style.color = info.color;
+    text = 'Гражданский';
+    color = DOT_COLORS.civil;
   } else {
-    label.textContent = 'Гос сотрудник';
-    dot.style.background = '#3b82f6';
-    dot.style.color = '#3b82f6';
+    const info = Profile.factionInfo();
+    text = info ? `Гос: ${info.short}` : 'Гос сотрудник';
+    color = info ? info.color : DOT_COLORS.gov;
   }
+
+  label.textContent = text;
+  dot.style.background = color;
+  dot.style.color = color;
 }
