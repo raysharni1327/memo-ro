@@ -4,30 +4,37 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // 1. Профиль
   const profile = Profile.get();
   if (!profile) {
     window.location.href = 'index.html';
     return;
   }
 
-  // 2. Шапка
   updateHeader(profile);
 
-  // 3. Рендер
   Render.sidebar();
   Render.popular();
   Render.recent();
   Render.changelog();
 
-  // 4. Счётчики
   Modal.updateCounters();
 
-  // 5. Кнопки в шапке
+  // Кнопки в шапке
   document.getElementById('btn-fav').addEventListener('click', () => Modal.openFavorites());
   document.getElementById('btn-cart').addEventListener('click', () => Modal.openCart());
 
-  // 6. Смена профиля — только через сайдбар, без confirm(), сразу модалка
+  // Глобальный поиск: кнопка вместо input
+  document.getElementById('global-search').addEventListener('click', () => Modal.openSearch());
+
+  // Ctrl+K — открыть поиск
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      Modal.openSearch();
+    }
+  });
+
+  // Смена профиля
   document.getElementById('switch-profile').addEventListener('click', () => {
     Modal.openProfileSwitcher(() => {
       updateHeader(Profile.get());
