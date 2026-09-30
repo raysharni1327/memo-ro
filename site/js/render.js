@@ -259,7 +259,11 @@ const Render = (() => {
 
     return html;
   }
-
+  // Текущая фракция пользователя, если он гос. Иначе — null.
+  function getMyFaction() {
+    const profile = Profile.get();
+    return (profile && profile.role === 'gov') ? profile.faction : null;
+  }
   // === Логика «моя / чужая / общая» ===
 
   // «Эффективные» метки статьи: фракции, которые реально могут работать.
@@ -302,8 +306,7 @@ const Render = (() => {
     const countEl = document.getElementById('list-count');
     if (!el) return;
 
-    const profile = Profile.get();
-    const myFaction = profile && profile.role === 'gov' ? profile.faction : null;
+       const myFaction = getMyFaction();
 
     countEl.textContent = `${articles.length} статей`;
 
@@ -376,8 +379,7 @@ const Render = (() => {
     const nodeId = `${docId}-${articleNum}`;
     Store.recentAdd(nodeId);
 
-    const profile = Profile.get();
-    const myFaction = profile && profile.role === 'gov' ? profile.faction : null;
+    const myFaction = getMyFaction();
     const transfer = myFaction ? transferTo(found, myFaction) : null;
 
     const marks = (found.meta && found.meta.marks) || [];
@@ -588,10 +590,9 @@ const Render = (() => {
     return `rgba(${r},${g},${b},${a})`;
   }
 
-  return {
+    return {
     sidebar, popular, recent, changelog,
     tree, articleList, article,
-    isCommon, isMine, transferTo,
     docShort, factionShort, factionColor,
     refreshRowButtons,
     refreshArticleButtons,
