@@ -6,6 +6,8 @@ const Modal = (() => {
 
   let overlayEl = null;
 
+  // Максимум звёзд приоритета (совпадает с render.js)
+  const STARS_MAX = 5;
   // ----------------------------------------------------------
   // Базовое открытие / закрытие
   // ----------------------------------------------------------
@@ -72,7 +74,7 @@ const Modal = (() => {
       let aggHtml = '';
 
       if (summary.starsMax) {
-        const stars = '★'.repeat(summary.starsMax) + '☆'.repeat(5 - summary.starsMax);
+        const stars = '★'.repeat(summary.starsMax) + '☆'.repeat(STARS_MAX - summary.starsMax);
         aggHtml += `<div class="cart-agg">
           <span class="cart-agg-label">Приоритет розыска</span>
           <span class="cart-agg-value stars-value">${stars}</span>
@@ -425,10 +427,7 @@ const Modal = (() => {
     lines.push('');
 
     if (summary.hasFine) {
-      const range = summary.fineMin && summary.fineMax
-        ? `${formatMoney(summary.fineMin)} — ${formatMoney(summary.fineMax)} ₽`
-        : (summary.fineMax ? `до ${formatMoney(summary.fineMax)} ₽` : '—');
-      lines.push(`Штраф: ${range}`);
+      lines.push(`Штраф: ${formatFineRange(summary) || '—'}`);
     }
     if (summary.arrestMax) lines.push(`Арест: до ${summary.arrestMax} суток`);
     if (summary.freedomMax) lines.push(`Лишение свободы: до ${summary.freedomMax} мес.`);
