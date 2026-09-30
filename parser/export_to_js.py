@@ -31,6 +31,16 @@ DOC_IDS = [
 ]
 
 
+def count_nodes(nodes):
+    """Рекурсивно считает все узлы в дереве документа."""
+    c = 0
+    for n in nodes:
+        c += 1
+        if "children" in n:
+            c += count_nodes(n["children"])
+    return c
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -52,14 +62,6 @@ def main():
             f.write(f"window.{var_name} = ")
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
             f.write(";\n")
-
-        def count_nodes(nodes):
-            c = 0
-            for n in nodes:
-                c += 1
-                if "children" in n:
-                    c += count_nodes(n["children"])
-            return c
 
         node_count = count_nodes(data.get("nodes", []))
 
