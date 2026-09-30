@@ -91,14 +91,8 @@ const Store = (() => {
   // Формат nodeId: "<docId>-<articleNum>", например "ak-14.3"
   // ----------------------------------------------------------
 
-  function parseNodeId(nodeId) {
-    const dashIdx = nodeId.indexOf('-');
-    if (dashIdx === -1) return null;
-    return {
-      docId: nodeId.substring(0, dashIdx),
-      articleNum: nodeId.substring(dashIdx + 1),
-    };
-  }
+  // Используем общий парсер из Docs — единая логика на весь проект
+  const parseNodeId = Docs.parseNodeId;
 
   function resolveNode(nodeId) {
     const p = parseNodeId(nodeId);
