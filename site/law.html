@@ -119,8 +119,8 @@
 <script src="js/modal.js"></script>
 <script src="js/law.js"></script>
 
+<!-- Временно отключено на время разработки, чтобы не бороться с кэшем
 <script>
-  // Регистрация service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch((err) => {
@@ -129,6 +129,7 @@
     });
   }
 </script>
+-->
 
 </body>
 </html>
