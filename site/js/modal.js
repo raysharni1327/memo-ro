@@ -1,5 +1,5 @@
 // ============================================================
-// Модальные окна: избранное, корзина, смена профиля.
+// Модальные окна: избранное, корзина, смена профиля, поиск.
 // ============================================================
 
 const Modal = (() => {
@@ -36,7 +36,7 @@ const Modal = (() => {
     if (overlayEl) overlayEl.classList.remove('modal-overlay--open');
   }
 
-  // === Модалка избранного ===
+  // === Избранное ===
 
   function openFavorites() {
     const list = Store.favList();
@@ -62,7 +62,7 @@ const Modal = (() => {
     attachListHandlers();
   }
 
-  // === Модалка корзины ===
+  // === Корзина ===
 
   function openCart() {
     const summary = Store.cartSummary();
@@ -136,7 +136,7 @@ const Modal = (() => {
     attachCartHandlers();
   }
 
-  // === Модалка смены профиля ===
+  // === Смена профиля ===
 
   function openProfileSwitcher(onChange) {
     const profile = Profile.get();
@@ -147,7 +147,6 @@ const Modal = (() => {
 
     let html = '';
 
-    // Раздел: базовые роли
     html += `<div class="profile-modal-group-title">Роль</div>`;
     html += `<div class="profile-modal-list">`;
 
@@ -160,7 +159,6 @@ const Modal = (() => {
 
     html += `</div>`;
 
-    // Раздел: фракции
     html += `<div class="profile-modal-group-title">Гос структуры</div>`;
     html += `<div class="profile-modal-list">`;
 
@@ -179,7 +177,6 @@ const Modal = (() => {
 
     open(html, 'Сменить профиль');
 
-    // Обработчики
     overlayEl.querySelectorAll('.profile-modal-item[data-role="civil"]').forEach(btn => {
       btn.addEventListener('click', () => {
         Profile.setRole('civil', null);
@@ -198,7 +195,132 @@ const Modal = (() => {
     });
   }
 
-  // === Обработчики ===
+  // === Глобальный поиск ===
+
+  function openSearch() {
+    open(`
+      <div class="search-modal">
+        <div class="search-modal-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-modal-input" class="search-modal-input"
+                 placeholder="Ищи по номеру, заголовку, тексту статьи…" autocomplete="off" />
+          <span class="search-kbd">Esc</span>
+        </div>
+        <div class="search-modal-results" id="search-modal-results">
+          <div class="search-hint">Введи минимум 2 символа.</div>
+        </div>
+      </div>
+    `, 'Поиск');
+
+    const input = overlayEl.querySelector('#search-modal-input');
+    const resultsEl = overlayEl.querySelector('#search-modal-results');
+    let activeIndex = -1;
+    let currentResults = [];
+
+    function renderResults(query) {
+      const trimmed = (query || '').trim();
+      if (trimmed.length < 2) {
+        resultsEl.innerHTML = `<div class="search-hint">Введи минимум 2 символа.</div>`;
+        currentResults = [];
+        activeIndex = -1;
+        return;
+      }
+
+      const results = Docs.searchAll(trimmed);
+      currentResults = results;
+      activeIndex = results.length ? 0 : -1;
+
+      if (!results.length) {
+        resultsEl.innerHTML = `<div class="search-hint">Ничего не найдено по запросу «${escapeHtml(trimmed)}».</div>`;
+        return;
+      }
+
+      resultsEl.innerHTML = results.map((r, i) => {
+        const docShort = Render.docShort(r.docId);
+        const cls = i === 0 ? 'search-result search-result--active' : 'search-result';
+        return `<a class="${cls}" href="law.html#${r.docId}-${r.num}" data-index="${i}">
+          <span class="modal-doc doc-plate">${docShort}</span>
+          <span class="modal-num">${r.num}</span>
+          <span class="search-result-text">
+            <span class="search-result-title">${escapeHtml(r.title || '')}</span>
+            ${r.context && r.kind === 'text'
+              ? `<span class="search-result-context">${escapeHtml(r.context)}</span>`
+              : ''}
+          </span>
+        </a>`;
+      }).join('');
+    }
+
+    function setActive(idx) {
+      const items = resultsEl.querySelectorAll('.search-result');
+      items.forEach(el => el.classList.remove('search-result--active'));
+      if (idx >= 0 && idx < items.length) {
+        items[idx].classList.add('search-result--active');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      }
+      activeIndex = idx;
+    }
+
+    input.addEventListener('input', (e) => {
+      renderResults(e.target.value);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!currentResults.length) return;
+        setActive(Math.min(currentResults.length - 1, activeIndex + 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!currentResults.length) return;
+        setActive(Math.max(0, activeIndex - 1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0 && currentResults[activeIndex]) {
+          const r = currentResults[activeIndex];
+          const href = `law.html#${r.docId}-${r.num}`;
+          if (location.pathname.endsWith('law.html')) {
+            location.hash = `${r.docId}-${r.num}`;
+            close();
+          } else {
+            location.href = href;
+          }
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    });
+
+    // Клик по результату
+    resultsEl.addEventListener('click', (e) => {
+      const link = e.target.closest('.search-result');
+      if (!link) return;
+      e.preventDefault();
+      const idx = parseInt(link.dataset.index, 10);
+      const r = currentResults[idx];
+      if (!r) return;
+      if (location.pathname.endsWith('law.html')) {
+        location.hash = `${r.docId}-${r.num}`;
+        close();
+      } else {
+        location.href = `law.html#${r.docId}-${r.num}`;
+      }
+    });
+
+    // Автофокус
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // === Обработчики общих списков ===
 
   function attachListHandlers() {
     const isFav = overlayEl.querySelector('.modal-title').textContent.startsWith('Избранное');
@@ -315,6 +437,6 @@ const Modal = (() => {
     if (cartEl) cartEl.textContent = Store.cartCount();
   }
 
-  return { openFavorites, openCart, openProfileSwitcher, close, updateCounters };
+  return { openFavorites, openCart, openProfileSwitcher, openSearch, close, updateCounters };
 
 })();
