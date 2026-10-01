@@ -269,6 +269,13 @@ def parse_type_a(lines, doc_id):
     current_article = None
     preamble_lines = []
     in_bullet_list = False
+    # ← ПРАВКА: заголовок статьи может открывать bullet-список
+    article_title_opens_bullet = False
+    # ← ПРАВКА: явный указатель на контейнер текущего bullet-списка
+    last_bullet_container = None
+    # ← ПРАВКА: после note с непустым текстом следующая неструктурная
+    #           строка становится bullet'ом в article.children
+    pending_bullet_after_note = False
 
     re_part = re.compile(r"^(ОБЩАЯ ЧАСТЬ|ОСОБЕННАЯ ЧАСТЬ)\s*$", re.IGNORECASE)
     re_section = re.compile(r"^Раздел\s+([IVXLC]+|\d+)\.?\s*(.*)$", re.IGNORECASE)
@@ -276,7 +283,7 @@ def parse_type_a(lines, doc_id):
     re_article = re.compile(r"^Статья\s+[\d.]+", re.IGNORECASE)
     re_paragraph = re.compile(r"^(?:ч\.?\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?))\.?\s+(.+)$")
     re_subparagraph = re.compile(r"^(?:(\d+)[\)\.]|([а-яё])[\)\.])\s+(.+)$", re.IGNORECASE)
-    re_note = re.compile(r"^Примечани[ея]\s*\d*\s*[:.]?\s*(.+)$", re.IGNORECASE)
+    re_note = re.compile(r"^Примечани[ея]\s*\d*\s*[:.]?\s*(.*)$", re.IGNORECASE)
 
     for line in lines:
         line = line.strip()
@@ -286,6 +293,9 @@ def parse_type_a(lines, doc_id):
         m = re_part.match(line)
         if m:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             current_part = make_node("part", title=m.group(1), children=[])
             nodes.append(current_part)
             current_section = None
@@ -296,6 +306,9 @@ def parse_type_a(lines, doc_id):
         m = re_section.match(line)
         if m:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             sec = make_node("section", number=m.group(1), title=(m.group(2) or "").strip(), children=[])
             if current_part:
                 current_part.setdefault("children", []).append(sec)
@@ -309,6 +322,9 @@ def parse_type_a(lines, doc_id):
         m = re_chapter.match(line)
         if m:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             ch = make_node("chapter", number=m.group(1), title=m.group(2).strip(), children=[])
             if current_section:
                 current_section.setdefault("children", []).append(ch)
@@ -322,9 +338,15 @@ def parse_type_a(lines, doc_id):
 
         if re_article.match(line):
             in_bullet_list = False
+            last_bullet_container = None
+            article_title_opens_bullet = False
+            pending_bullet_after_note = False
             art = new_article(doc_id, line)
             if art is None:
                 continue
+            # если заголовок кончается на ':' — открываем bullet-список
+            if (art.get("title") or "").rstrip().endswith(":"):
+                article_title_opens_bullet = True
             target = current_chapter or current_section or current_part
             if target:
                 target.setdefault("children", []).append(art)
@@ -336,22 +358,42 @@ def parse_type_a(lines, doc_id):
         m = RE_PRIORITY.match(line)
         if m and current_article is not None:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             current_article.setdefault("meta", {})["priorityStars"] = int(m.group(1))
             continue
 
         m = re_note.match(line)
         if m and current_article is not None:
-            in_bullet_list = False
-            current_article["children"].append(
-                make_node("note", text=m.group(1).strip())
-            )
+            article_title_opens_bullet = False
+            note_text = m.group(1).strip()
+            note = make_node("note", text=note_text)
+            if line.rstrip().endswith(":"):
+                # «Примечание:» без текста — открываем bullet прямо в note
+                note["children"] = []
+                in_bullet_list = True
+                last_bullet_container = note
+                pending_bullet_after_note = False
+            elif note_text:
+                # «Примечание: <текст>» — обычный note. Если дальше в исходнике
+                # идёт неструктурная строка, она станет bullet'ом.
+                in_bullet_list = False
+                last_bullet_container = None
+                pending_bullet_after_note = True
+            else:
+                in_bullet_list = False
+                last_bullet_container = None
+                pending_bullet_after_note = False
+            current_article["children"].append(note)
             continue
-
-        # re_bullet больше не нужна — блок удалён
 
         m = re_paragraph.match(line)
         if m and current_article is not None:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             num = m.group(1) or m.group(2)
             text = m.group(3).strip()
             append_paragraph(current_article, num, text)
@@ -360,6 +402,9 @@ def parse_type_a(lines, doc_id):
         m = re_subparagraph.match(line)
         if m and current_article is not None:
             in_bullet_list = False
+            article_title_opens_bullet = False
+            last_bullet_container = None
+            pending_bullet_after_note = False
             num = m.group(1) or m.group(2)
             text = m.group(3).strip()
             children = current_article["children"]
@@ -375,40 +420,83 @@ def parse_type_a(lines, doc_id):
         if current_article is not None:
             children = current_article["children"]
 
-            # Если предыдущий узел — paragraph с ':' в конце → начать bullet
-            last_is_colon_paragraph = (
-                children
-                and children[-1]["type"] == "paragraph"
-                and (children[-1].get("text") or "").rstrip().endswith(":")
+            # ← ПРАВКА: после note с непустым текстом следующая неструктурная
+            #           строка становится bullet'ом прямо в article.children.
+            if pending_bullet_after_note:
+                is_structural = (
+                    re_part.match(line)
+                    or re_section.match(line)
+                    or re_chapter.match(line)
+                    or re_article.match(line)
+                    or RE_PRIORITY.match(line)
+                    or re_note.match(line)
+                    or re_paragraph.match(line)
+                    or re_subparagraph.match(line)
+                )
+                if not is_structural:
+                    children.append(make_node("bullet", text=line))
+                    in_bullet_list = True
+                    last_bullet_container = current_article
+                    pending_bullet_after_note = False
+                    continue
+                else:
+                    # структурную строку сюда не пустит цикл, но подстрахуемся
+                    pending_bullet_after_note = False
+
+            # ← ПРАВКА: если заголовок статьи кончался на ':' и это первая строка —
+            #           создаём bullet прямо в article.children
+            if article_title_opens_bullet and len(children) == 0:
+                children.append(make_node("bullet", text=line))
+                in_bullet_list = True
+                last_bullet_container = current_article
+                continue
+
+            # Если предыдущий узел — paragraph/note с ':' в конце → начать bullet
+            last_node = children[-1] if children else None
+            last_is_colon_container = (
+                last_node is not None
+                and last_node["type"] in ("paragraph", "note")
+                and (last_node.get("text") or "").rstrip().endswith(":")
             )
-            if last_is_colon_paragraph:
-                children[-1].setdefault("children", []).append(
+            if last_is_colon_container:
+                last_node.setdefault("children", []).append(
                     make_node("bullet", text=line)
                 )
                 in_bullet_list = True
+                last_bullet_container = last_node
                 continue
 
             # Продолжение bullet-списка
             if in_bullet_list:
-                target_par = None
-                for c in reversed(children):
-                    if c["type"] == "paragraph" and any(
-                        ch.get("type") == "bullet" for ch in c.get("children", [])
-                    ):
-                        target_par = c
-                        break
+                target_par = last_bullet_container
+                if target_par is None:
+                    for c in reversed(children):
+                        if c["type"] in ("paragraph", "note") and any(
+                            ch.get("type") == "bullet" for ch in c.get("children", [])
+                        ):
+                            target_par = c
+                            break
                 if target_par is not None:
-                    target_par.setdefault("children", []).append(
-                        make_node("bullet", text=line)
-                    )
+                    if target_par is current_article:
+                        children.append(make_node("bullet", text=line))
+                    else:
+                        target_par.setdefault("children", []).append(
+                            make_node("bullet", text=line)
+                        )
                     continue
                 else:
                     in_bullet_list = False
 
             # Обычное приклеивание к предыдущему узлу
             if children and children[-1]["type"] in ("paragraph", "subparagraph", "note", "bullet"):
-                prev = children[-1].get("text", "")
-                children[-1]["text"] = (prev + " " + line).strip()
+                last = children[-1]
+                if last["type"] in ("paragraph", "note") and last.get("children"):
+                    last["children"][-1]["text"] = (
+                        last["children"][-1].get("text", "") + " " + line
+                    ).strip()
+                else:
+                    prev = last.get("text", "")
+                    last["text"] = (prev + " " + line).strip()
             else:
                 append_paragraph(current_article, "", line)
         else:

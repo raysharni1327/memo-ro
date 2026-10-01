@@ -1,1 +1,1 @@
-window.CHANGELOG = [];
+window.CHANGELOG = [{"date":"2026-10-01","doc_id":"uk","article":"1.8","kind":"text_changed","text":"Изменён текст статьи"},{"date":"2026-10-01","doc_id":"business","article":"9","kind":"text_changed","text":"Изменён текст статьи"}];
