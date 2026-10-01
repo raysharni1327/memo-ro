@@ -207,6 +207,11 @@ RE_PRIORITY = re.compile(
 )
 
 
+# Максимальная длина title статьи. Если текст длиннее — режем до первой
+# точки (или до этой длины, если точки нет), остаток — в первый paragraph.
+ARTICLE_TITLE_MAX = 120
+
+
 def new_article(doc_id, raw_title_line):
     m = RE_ARTICLE_FULL.match(raw_title_line.strip())
     if not m:
@@ -214,11 +219,28 @@ def new_article(doc_id, raw_title_line):
 
     number = m.group(1).strip().rstrip(".")
     marks_str = (m.group(2) or "").strip()
-    title = (m.group(3) or "").strip()
+    title_raw = (m.group(3) or "").strip()
 
     marks = []
     if marks_str:
         marks = [p.strip() for p in marks_str.split("/") if p.strip()]
+
+    # Разделяем "title" и "остаток" — если заголовок слишком длинный
+    title = title_raw
+    tail = ""
+
+    if len(title_raw) > ARTICLE_TITLE_MAX:
+        # Ищем первую точку, после которой идёт пробел и заглавная буква
+        # (конец первого предложения). Не трогаем точки в номерах и сокращениях.
+        m_dot = re.search(r"\.\s+(?=[А-ЯЁ])", title_raw)
+        if m_dot:
+            title = title_raw[:m_dot.start() + 1].strip()
+            tail = title_raw[m_dot.end():].strip()
+        else:
+            # Точки нет — обрезаем по последнему пробелу до лимита
+            cut = title_raw[:ARTICLE_TITLE_MAX].rsplit(" ", 1)[0]
+            title = cut + "…"
+            tail = title_raw[len(cut):].strip()
 
     art = {
         "type": "article",
@@ -228,6 +250,11 @@ def new_article(doc_id, raw_title_line):
     }
     if marks:
         art["meta"] = {"marks": marks}
+
+    # Остаток длинного заголовка — как первый paragraph статьи
+    if tail:
+        art["children"].append(make_node("paragraph", text=tail))
+
     return art
 
 
@@ -241,6 +268,7 @@ def parse_type_a(lines, doc_id):
     current_chapter = None
     current_article = None
     preamble_lines = []
+    in_bullet_list = False
 
     re_part = re.compile(r"^(ОБЩАЯ ЧАСТЬ|ОСОБЕННАЯ ЧАСТЬ)\s*$", re.IGNORECASE)
     re_section = re.compile(r"^Раздел\s+([IVXLC]+|\d+)\.?\s*(.*)$", re.IGNORECASE)
@@ -248,7 +276,7 @@ def parse_type_a(lines, doc_id):
     re_article = re.compile(r"^Статья\s+[\d.]+", re.IGNORECASE)
     re_paragraph = re.compile(r"^(?:ч\.?\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?))\.?\s+(.+)$")
     re_subparagraph = re.compile(r"^(?:(\d+)[\)\.]|([а-яё])[\)\.])\s+(.+)$", re.IGNORECASE)
-    re_note = re.compile(r"^Примечани[ея]\s*\d*\s*:\s*(.+)$", re.IGNORECASE)
+    re_note = re.compile(r"^Примечани[ея]\s*\d*\s*[:.]?\s*(.+)$", re.IGNORECASE)
 
     for line in lines:
         line = line.strip()
@@ -257,6 +285,7 @@ def parse_type_a(lines, doc_id):
 
         m = re_part.match(line)
         if m:
+            in_bullet_list = False
             current_part = make_node("part", title=m.group(1), children=[])
             nodes.append(current_part)
             current_section = None
@@ -266,6 +295,7 @@ def parse_type_a(lines, doc_id):
 
         m = re_section.match(line)
         if m:
+            in_bullet_list = False
             sec = make_node("section", number=m.group(1), title=(m.group(2) or "").strip(), children=[])
             if current_part:
                 current_part.setdefault("children", []).append(sec)
@@ -278,6 +308,7 @@ def parse_type_a(lines, doc_id):
 
         m = re_chapter.match(line)
         if m:
+            in_bullet_list = False
             ch = make_node("chapter", number=m.group(1), title=m.group(2).strip(), children=[])
             if current_section:
                 current_section.setdefault("children", []).append(ch)
@@ -290,6 +321,7 @@ def parse_type_a(lines, doc_id):
             continue
 
         if re_article.match(line):
+            in_bullet_list = False
             art = new_article(doc_id, line)
             if art is None:
                 continue
@@ -303,18 +335,23 @@ def parse_type_a(lines, doc_id):
 
         m = RE_PRIORITY.match(line)
         if m and current_article is not None:
+            in_bullet_list = False
             current_article.setdefault("meta", {})["priorityStars"] = int(m.group(1))
             continue
 
         m = re_note.match(line)
         if m and current_article is not None:
+            in_bullet_list = False
             current_article["children"].append(
                 make_node("note", text=m.group(1).strip())
             )
             continue
 
+        # re_bullet больше не нужна — блок удалён
+
         m = re_paragraph.match(line)
         if m and current_article is not None:
+            in_bullet_list = False
             num = m.group(1) or m.group(2)
             text = m.group(3).strip()
             append_paragraph(current_article, num, text)
@@ -322,6 +359,7 @@ def parse_type_a(lines, doc_id):
 
         m = re_subparagraph.match(line)
         if m and current_article is not None:
+            in_bullet_list = False
             num = m.group(1) or m.group(2)
             text = m.group(3).strip()
             children = current_article["children"]
@@ -333,9 +371,42 @@ def parse_type_a(lines, doc_id):
                 children.append(make_node("subparagraph", number=num, text=text))
             continue
 
+        # === Bullet-списки и обычные продолжения текста ===
         if current_article is not None:
             children = current_article["children"]
-            if children and children[-1]["type"] in ("paragraph", "subparagraph"):
+
+            # Если предыдущий узел — paragraph с ':' в конце → начать bullet
+            last_is_colon_paragraph = (
+                children
+                and children[-1]["type"] == "paragraph"
+                and (children[-1].get("text") or "").rstrip().endswith(":")
+            )
+            if last_is_colon_paragraph:
+                children[-1].setdefault("children", []).append(
+                    make_node("bullet", text=line)
+                )
+                in_bullet_list = True
+                continue
+
+            # Продолжение bullet-списка
+            if in_bullet_list:
+                target_par = None
+                for c in reversed(children):
+                    if c["type"] == "paragraph" and any(
+                        ch.get("type") == "bullet" for ch in c.get("children", [])
+                    ):
+                        target_par = c
+                        break
+                if target_par is not None:
+                    target_par.setdefault("children", []).append(
+                        make_node("bullet", text=line)
+                    )
+                    continue
+                else:
+                    in_bullet_list = False
+
+            # Обычное приклеивание к предыдущему узлу
+            if children and children[-1]["type"] in ("paragraph", "subparagraph", "note", "bullet"):
                 prev = children[-1].get("text", "")
                 children[-1]["text"] = (prev + " " + line).strip()
             else:
@@ -631,7 +702,35 @@ def cleanup_nodes(nodes):
         cleaned.append(n)
     return cleaned
 
+# ============================================================
+# Уникальные node_id для статей
+# ============================================================
 
+def assign_node_ids(nodes):
+    """
+    Присваивает каждой article уникальный node_id в рамках документа.
+    Первое вхождение номера "1" → node_id = "1"
+    Второе                     → node_id = "1-1"
+    Третье                     → node_id = "1-2"
+    ...
+    """
+    counters = {}  # number → сколько раз уже встретился
+
+    def walk(items):
+        for n in items:
+            if n.get("type") == "article":
+                num = str(n.get("number", "")).strip()
+                if num:
+                    seen = counters.get(num, 0)
+                    if seen == 0:
+                        n["node_id"] = num
+                    else:
+                        n["node_id"] = f"{num}-{seen}"
+                    counters[num] = seen + 1
+            if "children" in n:
+                walk(n["children"])
+
+    walk(nodes)
 # ============================================================
 # Извлечение penalty
 # ============================================================
@@ -806,6 +905,9 @@ def parse_document(raw_data, config=None):
     for n in nodes:
         walk_split_parts(n)
 
+    # Уникальные node_id для статей (Этап 2)
+    assign_node_ids(nodes)
+
     nodes = cleanup_nodes(nodes)
 
     doc = {
@@ -828,14 +930,14 @@ def parse_document(raw_data, config=None):
 # ============================================================
 
 def _collect_articles(nodes):
-    """Собирает плоский dict {number: article_node} по всему дереву."""
+    """Собирает плоский dict {node_id: article_node} по всему дереву."""
     out = {}
     def walk(items):
         for n in items:
             if n.get("type") == "article":
-                num = n.get("number", "")
-                if num:
-                    out[num] = n
+                nid = n.get("node_id") or n.get("number", "")
+                if nid:
+                    out[nid] = n
             if "children" in n:
                 walk(n["children"])
     walk(nodes)
@@ -843,6 +945,7 @@ def _collect_articles(nodes):
 
 
 def _article_signature(article):
+    node_id = article.get("node_id", "") or ""
     title = article.get("title", "") or ""
     penalty = article.get("penalty", {}) or {}
     penalty_raw = penalty.get("raw", "") or ""
@@ -866,7 +969,7 @@ def _article_signature(article):
         )
     parts_str = "|".join(parts_sig)
 
-    return title + "||" + penalty_raw + "||" + " ".join(texts) + "||" + parts_str
+    return node_id + "||" + title + "||" + penalty_raw + "||" + " ".join(texts) + "||" + parts_str
 
 
 def diff_documents(old_doc, new_doc):
@@ -966,12 +1069,31 @@ def diff_documents(old_doc, new_doc):
 
 
 def _num_key(num):
-    """Ключ сортировки номеров статей: '14.3' → (14, 3)."""
+    """
+    Ключ сортировки node_id:
+      '14.3'   → (14, 3, 0)
+      '1'      → (1, 0, 0)
+      '1-1'    → (1, 0, 1)
+      '14.18'  → (14, 18, 0)
+    """
+    s = str(num)
+    # отделяем суффикс "-N" (второе, третье вхождение)
+    suffix = 0
+    if "-" in s:
+        base, _, suf = s.rpartition("-")
+        try:
+            suffix = int(suf)
+        except ValueError:
+            suffix = 0
+        s = base
     try:
-        parts = [int(p) for p in str(num).split(".")]
-        return tuple(parts)
+        parts = [int(p) for p in s.split(".")]
     except Exception:
-        return (0,)
+        parts = [0]
+    # добиваем до 3 элементов, чтобы '1' и '1.0' не ломали сортировку
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:2] + [suffix])
 
 
 def append_changelog(new_entries):

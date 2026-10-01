@@ -910,6 +910,41 @@ details[open] > .nav-title { color: var(--text); }
   opacity: 0.6;
 }
 .article-text { font-size: 15.5px; line-height: 1.7; color: var(--text); }
+/* === Примечание к статье === */
+.note-block {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+
+.note-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.note-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  opacity: 0.9;
+}
+
+/* === Подпункты а) б) в) === */
+.article-subtext {
+  padding-left: 20px;
+  position: relative;
+}
+
+.article-subtext strong {
+  color: var(--accent);
+  margin-right: 4px;
+}
 
 .stars { font-size: 20px; letter-spacing: 3px; color: var(--accent); text-shadow: 0 0 12px var(--accent-glow); }
 .stars-dim { color: var(--text-mute); text-shadow: none; }
@@ -1400,4 +1435,16 @@ details[open] > .nav-title { color: var(--text); }
   display: contents;   /* чтобы <a> не ломал flex/grid родителя */
   color: inherit;
   text-decoration: none;
+}
+.article-bullet {
+  padding-left: 24px;
+  position: relative;
+}
+
+.article-bullet::before {
+  content: "•";
+  position: absolute;
+  left: 8px;
+  color: var(--accent);
+  font-weight: 700;
 }

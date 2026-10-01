@@ -351,11 +351,11 @@ const Render = (() => {
         ? 'article-row'
         : 'article-row row-foreign';
 
-      const nodeId = `${docId}-${a.number}`;
+            const nodeId = `${docId}-${a.node_id || a.number}`;
       const inFav  = Store.favHas(nodeId);
       const inCart = Store.cartHas(nodeId);
 
-      return `<li class="${cls}" data-article="${a.number}" data-node="${nodeId}">
+            return `<li class="${cls}" data-article="${a.node_id || a.number}" data-node="${nodeId}">
         <span class="row-num" style="background:${numBg}">${a.number}</span>
         <span class="row-marks">${badgeHtml}</span>
         <span class="row-title">${a.title || ''}</span>
@@ -382,8 +382,10 @@ const Render = (() => {
       return;
     }
 
-    // Сохраняем в "Недавние"
-    const nodeId = `${docId}-${articleNum}`;
+        // Сохраняем в "Недавние". Используем node_id найденной статьи —
+    // на случай, если пришли по старой ссылке с дублирующимся number.
+    const realNodeId = found.node_id || articleNum;
+    const nodeId = `${docId}-${realNodeId}`;
     Store.recentAdd(nodeId);
 
     const myFaction = getMyFaction();
@@ -431,7 +433,7 @@ const Render = (() => {
             ${parsed ? `<span class="penalty-parsed">${parsed}</span>` : ''}
           </div>`;
         }
-                const partNodeId = `${docId}-${found.number}#p${p.number}`;
+                        const partNodeId = `${docId}-${found.node_id || found.number}#p${p.number}`;
         const partInFav  = Store.favHas(partNodeId);
         const partInCart = Store.cartHas(partNodeId);
 
@@ -444,15 +446,15 @@ const Render = (() => {
               <button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">🗑</button>
             </span>
           </div>
-          <div class="part-body">${p.text || ''}</div>
+                    <div class="part-body">
+            <p class="article-text">${p.text || ''}</p>
+            ${renderArticleChildren(p.children || [])}
+          </div>
           ${penHtml}
         </div>`;
       }).join('');
-    } else {
-      const paragraphs = (found.children || []).filter(c => c.type === 'paragraph' || c.type === 'subparagraph');
-      partsHtml = paragraphs.map(p =>
-        `<p class="article-text">${p.number ? `<strong>${p.number}.</strong> ` : ''}${p.text || ''}</p>`
-      ).join('');
+            } else {
+      partsHtml = renderArticleChildren(found.children || []);
     }
 
        // Сводный penalty статьи показываем только если нет parts.
@@ -619,7 +621,37 @@ const Render = (() => {
     const b = parseInt(h.substring(4, 6), 16);
     return `rgba(${r},${g},${b},${a})`;
   }
+  // Рекурсивный рендер состава статьи.
+  // Поддерживает paragraph, subparagraph, note — с любым уровнем вложенности.
+  function renderArticleChildren(children) {
+    if (!children || !children.length) return '';
 
+    return children.map(c => {
+      if (c.type === 'note') {
+        return `<div class="note-block">
+          <div class="note-label">Примечание</div>
+          <div class="note-text">${c.text || ''}</div>
+        </div>`;
+      }
+
+      if (c.type === 'subparagraph') {
+        const numPrefix = c.number ? `<strong>${c.number})</strong> ` : '';
+        const inner = c.children ? renderArticleChildren(c.children) : '';
+        return `<p class="article-text article-subtext">${numPrefix}${c.text || ''}</p>${inner}`;
+      }
+
+      if (c.type === 'paragraph') {
+        const numPrefix = c.number ? `<strong>${c.number}.</strong> ` : '';
+        const inner = c.children ? renderArticleChildren(c.children) : '';
+        return `<p class="article-text">${numPrefix}${c.text || ''}</p>${inner}`;
+      }
+      if (c.type === 'bullet') {
+  return `<p class="article-text article-bullet">${c.text || ''}</p>`;
+}
+
+      return '';
+    }).join('');
+  }
   // Рендер одного типа наказания (штраф/арест/...).
   // Возвращает строку вида "Штраф · 500 — 2 000 ₽" или "Арест · до 10 суток".
   function renderPenaltyType(t) {
