@@ -86,21 +86,25 @@ const Docs = (() => {
   const doc = get(parsed.docId);
   if (!doc) return null;
 
+  // 1. Найти статью по node_id (или, как фолбэк, по number).
+  const target = parsed.articleNum;
   const article = walkTree(doc.nodes || [], (n) => {
-    if (n.type === 'article' && n.number === parsed.articleNum) return n;
+    if (n.type !== 'article') return;
+    if (n.node_id && n.node_id === target) return n;
+    if (!n.node_id && n.number === target) return n;
   }) || null;
 
   if (!article) return null;
 
-  // Если запрошена часть — вернуть её (но с пометкой, что это часть,
-  // чтобы render/article могли отличить)
+  // 2. Если запрошена часть (`ak-14.18#p1`), вернуть именно её,
+  //    а не всю статью.
   if (parsed.partNum) {
     const parts = article.parts || [];
     const part = parts.find(p => String(p.number) === String(parsed.partNum));
     if (!part) return null;
 
     return {
-      ...part,             // number, label, title, text, penalty
+      ...part,                        // number, label, title, text, penalty
       _isPart: true,
       _parentArticle: article,
       _parentNumber: article.number,
@@ -146,7 +150,7 @@ function parseNodeId(nodeId) {
   return {
     docId: nodeId.substring(0, dashIdx),
     articleNum: articlePart,
-    partNum, // null или строка "1", "2", ...
+    partNum,
   };
 }
 
@@ -196,9 +200,10 @@ function parseNodeId(nodeId) {
   }
 
   // Формирование одного результата поиска
-  function buildResult(article, docId, docTitle, scored, q) {
+    function buildResult(article, docId, docTitle, scored, q) {
     const { score, kind } = scored;
-    const num = article.number || '';
+    const num = article.number || '';       // для отображения
+    const nodeId = article.node_id || num;  // для ссылок
     const title = article.title || '';
     const bodyText = collectText(article);
 
@@ -209,7 +214,7 @@ function parseNodeId(nodeId) {
       context = title;
     }
 
-    return { docId, docTitle, num, title, kind, context, score };
+    return { docId, docTitle, num, nodeId, title, kind, context, score };
   }
 
   function searchAll(query) {

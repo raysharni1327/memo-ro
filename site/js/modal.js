@@ -226,7 +226,7 @@ const Modal = (() => {
       resultsEl.innerHTML = results.map((r, i) => {
         const docShort = Render.docShort(r.docId);
         const cls = i === 0 ? 'search-result search-result--active' : 'search-result';
-        return `<a class="${cls}" href="law.html#${r.docId}-${r.num}" data-index="${i}">
+        return `<a class="${cls}" href="law.html#${r.docId}-${r.nodeId}" data-index="${i}">
           <span class="modal-doc doc-plate">${docShort}</span>
           <span class="modal-num">${r.num}</span>
           <span class="search-result-text">
@@ -266,9 +266,9 @@ const Modal = (() => {
         e.preventDefault();
         if (activeIndex >= 0 && currentResults[activeIndex]) {
           const r = currentResults[activeIndex];
-          const href = `law.html#${r.docId}-${r.num}`;
+          const href = `law.html#${r.docId}-${r.nodeId}`;
           if (location.pathname.endsWith('law.html')) {
-            location.hash = `${r.docId}-${r.num}`;
+            location.hash = `${r.docId}-${r.nodeId}`;
             close();
           } else {
             location.href = href;
@@ -289,7 +289,7 @@ const Modal = (() => {
       const r = currentResults[idx];
       if (!r) return;
       if (location.pathname.endsWith('law.html')) {
-        location.hash = `${r.docId}-${r.num}`;
+        location.hash = `${r.docId}-${r.nodeId}`;
         close();
       } else {
         location.href = `law.html#${r.docId}-${r.num}`;

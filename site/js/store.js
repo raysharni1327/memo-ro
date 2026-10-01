@@ -103,13 +103,12 @@ const Store = (() => {
     return { nodeId, docId: p.docId, articleNum: p.articleNum, error: true };
   }
 
-  // Часть статьи (вариант B)
   if (p.partNum && found._isPart) {
     return {
       nodeId,
       docId: p.docId,
-      articleNum: p.articleNum,          // "14.18"
-      partNum: p.partNum,                // "1"
+      articleNum: p.articleNum,
+      partNum: p.partNum,
       label: found.label || `${p.articleNum} ч.${p.partNum}`,
       title: found.title || '',
       penalty: found.penalty || null,
@@ -118,7 +117,6 @@ const Store = (() => {
     };
   }
 
-  // Статья целиком
   return {
     nodeId,
     docId: p.docId,
