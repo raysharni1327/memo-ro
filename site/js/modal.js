@@ -225,7 +225,7 @@ const Modal = (() => {
     let activeIndex = -1;
     let currentResults = [];
 
-    function renderResults(query) {
+        function renderResults(query) {
       const trimmed = (query || '').trim();
       if (trimmed.length < 2) {
         resultsEl.innerHTML = `<div class="search-hint">Введи минимум 2 символа.</div>`;
@@ -243,14 +243,22 @@ const Modal = (() => {
         return;
       }
 
+      // Приоритетные документы (УК, КоАП) — берём из Docs, если есть.
+      // Fallback на хардкод, если экспорт в data.js ещё не сделан.
+      const prioritySet = Docs.SEARCH_PRIORITY_DOCS || new Set(['uk', 'ak']);
+
       resultsEl.innerHTML = results.map((r, i) => {
         const docShort = Render.docShort(r.docId);
         const cls = i === 0 ? 'search-result search-result--active' : 'search-result';
+        const isPriority = prioritySet.has(r.docId);
+        const dot = isPriority
+          ? `<span class="search-result-priority" title="Приоритетный документ">●</span>`
+          : '';
         return `<a class="${cls}" href="law.html#${r.docId}-${r.nodeId}" data-index="${i}">
           <span class="modal-doc doc-plate">${docShort}</span>
           <span class="modal-num">${r.num}</span>
           <span class="search-result-text">
-            <span class="search-result-title">${escapeHtml(r.title || '')}</span>
+            <span class="search-result-title">${dot}${escapeHtml(r.title || '')}</span>
             ${r.context && r.kind === 'text'
               ? `<span class="search-result-context">${escapeHtml(r.context)}</span>`
               : ''}

@@ -17,6 +17,7 @@ const VAR_MAP = {
 
 // Веса релевантности в глобальном поиске
 const SEARCH_SCORE = {
+  
   NUMBER_EXACT:  100,
   NUMBER_PREFIX: 80,
   TITLE_EXACT:   70,
@@ -25,6 +26,11 @@ const SEARCH_SCORE = {
   TEXT:          30,
   DOC:           5,
 };
+// Приоритетные документы в глобальном поиске: результаты из них
+// поднимаются выше остальных. Жёсткий приоритет + бонус для
+// сортировки внутри группы.
+const SEARCH_PRIORITY_DOCS = new Set(['uk', 'ak']);
+const SEARCH_PRIORITY_BONUS = 150;
 
 // Параметры сниппета контекста
 const CONTEXT_RADIUS = 40;
@@ -206,14 +212,26 @@ function parseNodeId(nodeId) {
     const title = article.title || '';
     const bodyText = collectText(article);
 
-    let context = '';
+        let context = '';
     if (kind === 'text') {
       context = contextAround(bodyText, q);
     } else {
       context = title;
     }
 
-    return { docId, docTitle, num, nodeId, title, kind, context, score };
+    // Если title пустой (статья-«тело», без заголовка) —
+    // отдаём короткое превью текста, чтобы в поиске не было пусто.
+    let displayTitle = title;
+    if (!displayTitle) {
+      const trimmed = bodyText.trim();
+      if (trimmed) {
+        displayTitle = trimmed.length > 110
+          ? trimmed.slice(0, 110).replace(/\s+\S*$/, '') + '…'
+          : trimmed;
+      }
+    }
+
+    return { docId, docTitle, num, nodeId, title: displayTitle, kind, context, score };
   }
 
   function searchAll(query) {
@@ -243,8 +261,18 @@ function parseNodeId(nodeId) {
       });
     }
 
-    results.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+        results.sort((a, b) => {
+      // 1. Приоритетные документы (УК, КоАП) — выше всех остальных
+      const aPri = SEARCH_PRIORITY_DOCS.has(a.docId) ? 1 : 0;
+      const bPri = SEARCH_PRIORITY_DOCS.has(b.docId) ? 1 : 0;
+      if (aPri !== bPri) return bPri - aPri;
+
+      // 2. Внутри группы — по релевантности (+ бонус приоритетным)
+      const aScore = a.score + (aPri ? SEARCH_PRIORITY_BONUS : 0);
+      const bScore = b.score + (bPri ? SEARCH_PRIORITY_BONUS : 0);
+      if (bScore !== aScore) return bScore - aScore;
+
+      // 3. При равном скоре — по алфавиту docId и номеру
       return a.docId.localeCompare(b.docId) || a.num.localeCompare(b.num);
     });
 
