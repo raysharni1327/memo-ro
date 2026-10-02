@@ -805,9 +805,9 @@ if (found.type === 'article_group') {
       return `Штраф · ${range}`;
     }
     if (t.type === 'лишение свободы') {
-      if (t.to) return `Лишение свободы · до ${t.to} ${t.unit || ''}`.trim();
-      return 'Лишение свободы';
-    }
+  if (t.to) return `Лишение свободы · до ${t.to} мин.`;
+  return 'Лишение свободы';
+}
     if (t.type === 'арест') {
       if (t.to) return `Арест · до ${t.to} ${t.unit || 'суток'}`;
       return 'Арест';
