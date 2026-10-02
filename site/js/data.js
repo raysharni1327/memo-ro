@@ -86,25 +86,22 @@ const Docs = (() => {
   const doc = get(parsed.docId);
   if (!doc) return null;
 
-  // 1. Найти статью по node_id (или, как фолбэк, по number).
   const target = parsed.articleNum;
   const article = walkTree(doc.nodes || [], (n) => {
-    if (n.type !== 'article') return;
+    if (n.type !== 'article' && n.type !== 'article_group') return;
     if (n.node_id && n.node_id === target) return n;
     if (!n.node_id && n.number === target) return n;
   }) || null;
 
   if (!article) return null;
 
-  // 2. Если запрошена часть (`ak-14.18#p1`), вернуть именно её,
-  //    а не всю статью.
   if (parsed.partNum) {
     const parts = article.parts || [];
     const part = parts.find(p => String(p.number) === String(parsed.partNum));
     if (!part) return null;
 
     return {
-      ...part,                        // number, label, title, text, penalty
+      ...part,
       _isPart: true,
       _parentArticle: article,
       _parentNumber: article.number,
@@ -114,16 +111,18 @@ const Docs = (() => {
   return article;
 }
 
-  function allArticles(docId) {
-    const doc = get(docId);
-    if (!doc) return [];
+function allArticles(docId) {
+  const doc = get(docId);
+  if (!doc) return [];
 
-    const out = [];
-    walkTree(doc.nodes || [], (n) => {
-      if (n.type === 'article') out.push(n);
-    });
-    return out;
-  }
+  const out = [];
+  walkTree(doc.nodes || [], (n) => {
+    if (n.type === 'article' || n.type === 'article_group') out.push(n);
+  });
+  return out;
+}
+
+
 
   // ----------------------------------------------------------
   // Разбор nodeId: "<docId>-<articleNum>", например "ak-14.3"
