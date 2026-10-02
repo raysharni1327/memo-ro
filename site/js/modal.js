@@ -52,11 +52,20 @@ const Modal = (() => {
       html = `<div class="empty-hint">Избранных статей пока нет. Добавь статью из списка слева или через поиск.</div>`;
     } else {
             html = `<ul class="modal-list">` + list.map(nodeId => {
-        const it = Store.resolveNode(nodeId);
-        if (!it || it.error) return '';
-        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
-        return renderListItem(nodeId, numLabel, it.title, Render.docShort(it.docId));
-      }).join('') + `</ul>`;
+  const it = Store.resolveNode(nodeId);
+  if (!it || it.error) return '';
+  const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+
+  // Как во второй колонке: если title пустой — превью из children
+  let title = it.title;
+  if (!title) {
+    const found = Docs.findArticle(nodeId);
+    const art = found ? (found._isPart ? found.parent : found) : null;
+    title = art ? (Render.previewText(art, 110) || 'Текст недоступен') : 'Текст недоступен';
+  }
+
+  return renderListItem(nodeId, numLabel, title, Render.docShort(it.docId));
+}).join('') + `</ul>`;
     }
 
     open(html, `Избранное (${Store.favCount()})`);
@@ -106,9 +115,18 @@ const Modal = (() => {
       }
 
             const itemsHtml = summary.items.map(it => {
-        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
-        return renderListItem(it.nodeId, numLabel, it.title, Render.docShort(it.docId));
-      }).join('');
+  const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+
+  // Как во второй колонке: если title пустой — превью из children
+  let title = it.title;
+  if (!title) {
+    const found = Docs.findArticle(it.nodeId);
+    const art = found ? (found._isPart ? found.parent : found) : null;
+    title = art ? (Render.previewText(art, 110) || 'Текст недоступен') : 'Текст недоступен';
+  }
+
+  return renderListItem(it.nodeId, numLabel, title, Render.docShort(it.docId));
+}).join('');
 
       html = `
         <div class="cart-summary">${aggHtml || '<div class="cart-agg"><span class="cart-agg-label">Наказания</span><span class="cart-agg-value">нет данных</span></div>'}</div>
