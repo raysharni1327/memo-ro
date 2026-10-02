@@ -49,7 +49,7 @@ const Modal = (() => {
     let html;
 
     if (!list.length) {
-      html = `<div class="empty-hint">Избранных статей пока нет. Нажми ★ у статьи, чтобы добавить её сюда.</div>`;
+      html = `<div class="empty-hint">Избранных статей пока нет. Добавь статью из списка слева или через поиск.</div>`;
     } else {
             html = `<ul class="modal-list">` + list.map(nodeId => {
         const it = Store.resolveNode(nodeId);
@@ -70,7 +70,7 @@ const Modal = (() => {
     let html;
 
     if (!summary.count) {
-      html = `<div class="empty-hint">Корзина пуста. Нажми 🗑 у статьи, чтобы добавить её сюда.</div>`;
+      html = `<div class="empty-hint">Корзина пуста. Добавь статью из списка слева или через поиск.</div>`;
     } else {
       let aggHtml = '';
 

@@ -401,7 +401,7 @@ const Render = (() => {
       <span class="row-title">${titleHtml}</span>
       <span class="row-actions">
         <button class="row-btn ${inFav ? 'row-btn-active' : ''}" data-fav data-node="${nodeId}">${inFav ? '★' : '☆'}</button>
-        <button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">${inCart ? '★' : '🗑'}</button>
+        <button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">+</button>
       </span>
     </li>`;
   }
