@@ -56,6 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ------------------------------------------------------------
+// Плавная смена содержимого колонки 3
+// ------------------------------------------------------------
+function renderArticleFaded(el, docId, num) {
+  if (!el) return;
+
+  el.classList.add('article-fading');
+  setTimeout(() => {
+    Render.article(docId, num);
+    el.classList.remove('article-fading');
+  }, 150);
+}
+
+// ------------------------------------------------------------
 // Полный рендер страницы под текущее состояние
 // ------------------------------------------------------------
 function renderAll() {
@@ -64,7 +77,7 @@ function renderAll() {
 
   const articleView = document.getElementById('article-view');
   if (LawState.articleNum) {
-    Render.article(LawState.docId, LawState.articleNum);
+    renderArticleFaded(articleView, LawState.docId, LawState.articleNum);
     highlightActiveArticle(LawState.articleNum);
   } else if (articleView) {
     articleView.innerHTML = HINT_PICK_ARTICLE;
@@ -95,7 +108,7 @@ function bindTreeNav() {
     const path = node.dataset.path;
     const isActive = node.classList.contains('tree-active');
 
-    LawState.nodePath = isActive ? null : (path ? path.split('/') : null);
+        LawState.nodePath = isActive ? null : (path ? path.split('/') : null);
     LawState.articleNum = null;
     updateHash();
 
@@ -103,7 +116,13 @@ function bindTreeNav() {
     renderList();
 
     const articleView = document.getElementById('article-view');
-    if (articleView) articleView.innerHTML = HINT_PICK_ARTICLE;
+    if (articleView) {
+      articleView.classList.add('article-fading');
+      setTimeout(() => {
+        articleView.innerHTML = HINT_PICK_ARTICLE;
+        articleView.classList.remove('article-fading');
+      }, 150);
+    }
   });
 }
 
@@ -152,14 +171,15 @@ function bindArticleList() {
     const num = row.dataset.article;
     if (!num) return;
 
-    LawState.articleNum = num;
+        LawState.articleNum = num;
     updateHash();
 
     document.querySelectorAll('.article-row')
       .forEach(r => r.classList.remove('row-active'));
     row.classList.add('row-active');
 
-    Render.article(LawState.docId, num);
+    const articleView = document.getElementById('article-view');
+    renderArticleFaded(articleView, LawState.docId, num);
   });
 }
 
@@ -170,14 +190,15 @@ function bindHeaderButtons() {
     ?.addEventListener('click', () => Modal.openCart());
   document.getElementById('global-search')
     ?.addEventListener('click', () => Modal.openSearch());
-  document.getElementById('switch-profile')
+    document.getElementById('switch-profile')
     ?.addEventListener('click', () => {
       Modal.openProfileSwitcher(() => {
         updateHeader(Profile.get());
         if (LawState.docId) {
           renderList();
           if (LawState.articleNum) {
-            Render.article(LawState.docId, LawState.articleNum);
+            const articleView = document.getElementById('article-view');
+            renderArticleFaded(articleView, LawState.docId, LawState.articleNum);
           }
         }
       });

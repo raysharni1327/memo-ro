@@ -226,16 +226,23 @@ a { color: inherit; text-decoration: none; }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(320px, 640px) minmax(160px, 1fr);
   align-items: center;
   padding: 0 24px;
-  gap: 28px;
+  gap: 20px;
   flex-shrink: 0;
   position: relative;
   z-index: 10;
 }
 
-.brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  justify-self: start;   /* ← добавили */
+}
 .brand-mark { color: var(--accent); font-size: 24px; text-shadow: 0 0 16px var(--accent-glow); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
 .brand-title { font-weight: 800; letter-spacing: 1px; font-size: 13px; }
@@ -243,8 +250,9 @@ a { color: inherit; text-decoration: none; }
 
 /* Кнопка поиска в топбаре — выглядит как поле, работает как кнопка */
 .search-btn {
-  flex: 1;
-  max-width: 720px;
+  /* flex: 1;            ← убираем */
+  width: 100%;
+  max-width: 640px;
   height: 38px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -259,6 +267,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-mute);
   transition: all 0.15s;
   text-align: left;
+  justify-self: center;  /* ← по центру колонки */
 }
 .search-btn:hover {
   border-color: var(--border-hard);
@@ -285,7 +294,7 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  margin-left: auto;
+  justify-self: end;     /* ← заменили margin-left: auto */
 }
 
 .icon-btn {
@@ -1101,19 +1110,6 @@ details[open] > .nav-title { color: var(--text); }
 }
 
 /* Модалки */
-.modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-}
-.modal-overlay--open { display: flex; }
 
 .modal {
   background: linear-gradient(180deg, #16161a 0%, #131317 100%);
@@ -1540,4 +1536,115 @@ details[open] > .nav-title { color: var(--text); }
 .group-child:hover .group-child-arrow {
   color: var(--accent);
   transform: translateX(3px);
+}
+.search-result-priority {
+  display: inline-block;
+  color: #c9302c;
+  font-size: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+  transform: translateY(-1px);
+}
+/* ============================================================
+   Плавность и анимации
+   ============================================================ */
+
+/* 1. Общие transition на интерактивных элементах */
+button,
+a,
+.card-mini,
+.article-row,
+.nav-item,
+.modal-list-item,
+.changelog-link,
+.changelog li,
+.article-group-row > .row-main,
+.part-card,
+.group-child,
+.search-result,
+.tree-row,
+.faction-card,
+.welcome-card,
+.profile-modal-item,
+.action-btn,
+.cart-btn,
+.icon-btn,
+.row-btn {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+/* 2. Модалки: fade + scale */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+.modal-overlay--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  transform: scale(0.96) translateY(8px);
+  opacity: 0;
+  transition:
+    transform 240ms cubic-bezier(0.2, 0.9, 0.3, 1.05),
+    opacity 200ms ease;
+}
+.modal-overlay--open .modal {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+/* 3. Появление результатов поиска */
+.search-result {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: searchResultIn 200ms ease forwards;
+}
+@keyframes searchResultIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+.search-result:nth-child(1)   { animation-delay: 0ms; }
+.search-result:nth-child(2)   { animation-delay: 20ms; }
+.search-result:nth-child(3)   { animation-delay: 40ms; }
+.search-result:nth-child(4)   { animation-delay: 60ms; }
+.search-result:nth-child(5)   { animation-delay: 80ms; }
+.search-result:nth-child(6)   { animation-delay: 100ms; }
+.search-result:nth-child(n+7) { animation-delay: 120ms; }
+
+/* 4. Плавное раскрытие дерева в сайдбаре */
+
+/* 6. Плавная смена статьи (см. также law.js) */
+#article-view {
+  transition: opacity 180ms ease;
+}
+#article-view.article-fading {
+  opacity: 0;
+}
+
+/* 7. Уважение prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
