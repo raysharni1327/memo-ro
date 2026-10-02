@@ -207,9 +207,29 @@ RE_PRIORITY = re.compile(
 )
 
 
-# Максимальная длина title статьи. Если текст длиннее — режем до первой
-# точки (или до этой длины, если точки нет), остаток — в первый paragraph.
-ARTICLE_TITLE_MAX = 120
+# Жёсткий потолок длины заголовка. Если title_raw длиннее —
+# это точно текст состава, а не заголовок.
+ARTICLE_TITLE_HARD_MAX = 200
+
+
+def _looks_like_body(s):
+    """
+    True, если строка после "Статья N." — это текст состава, а не заголовок.
+    Признаки:
+      - длиннее HARD_MAX;
+      - оканчивается на "…" (была обрезана в предыдущей версии парсера);
+      - содержит ". " + заглавная (два и более предложения).
+    """
+    if not s:
+        return False
+    if len(s) > ARTICLE_TITLE_HARD_MAX:
+        return True
+    if s.endswith("…"):
+        return True
+    body = s.rstrip(".")
+    if re.search(r"\.\s+[А-ЯЁ]", body):
+        return True
+    return False
 
 
 def new_article(doc_id, raw_title_line):
@@ -225,35 +245,20 @@ def new_article(doc_id, raw_title_line):
     if marks_str:
         marks = [p.strip() for p in marks_str.split("/") if p.strip()]
 
-    # Разделяем "title" и "остаток" — если заголовок слишком длинный
-    title = title_raw
-    tail = ""
-
-    if len(title_raw) > ARTICLE_TITLE_MAX:
-        # Ищем первую точку, после которой идёт пробел и заглавная буква
-        # (конец первого предложения). Не трогаем точки в номерах и сокращениях.
-        m_dot = re.search(r"\.\s+(?=[А-ЯЁ])", title_raw)
-        if m_dot:
-            title = title_raw[:m_dot.start() + 1].strip()
-            tail = title_raw[m_dot.end():].strip()
-        else:
-            # Точки нет — обрезаем по последнему пробелу до лимита
-            cut = title_raw[:ARTICLE_TITLE_MAX].rsplit(" ", 1)[0]
-            title = cut + "…"
-            tail = title_raw[len(cut):].strip()
+    is_body = _looks_like_body(title_raw)
 
     art = {
         "type": "article",
         "number": number,
-        "title": title,
+        "title": "" if is_body else title_raw,
         "children": [],
     }
     if marks:
         art["meta"] = {"marks": marks}
 
-    # Остаток длинного заголовка — как первый paragraph статьи
-    if tail:
-        art["children"].append(make_node("paragraph", text=tail))
+    # Если это текст состава — весь title_raw уходит в первый paragraph.
+    if is_body and title_raw:
+        art["children"].append(make_node("paragraph", text=title_raw))
 
     return art
 
@@ -344,9 +349,6 @@ def parse_type_a(lines, doc_id):
             art = new_article(doc_id, line)
             if art is None:
                 continue
-            # если заголовок кончается на ':' — открываем bullet-список
-            if (art.get("title") or "").rstrip().endswith(":"):
-                article_title_opens_bullet = True
             target = current_chapter or current_section or current_part
             if target:
                 target.setdefault("children", []).append(art)
@@ -443,13 +445,6 @@ def parse_type_a(lines, doc_id):
                     # структурную строку сюда не пустит цикл, но подстрахуемся
                     pending_bullet_after_note = False
 
-            # ← ПРАВКА: если заголовок статьи кончался на ':' и это первая строка —
-            #           создаём bullet прямо в article.children
-            if article_title_opens_bullet and len(children) == 0:
-                children.append(make_node("bullet", text=line))
-                in_bullet_list = True
-                last_bullet_container = current_article
-                continue
 
             # Если предыдущий узел — paragraph/note с ':' в конце → начать bullet
             last_node = children[-1] if children else None
@@ -545,12 +540,30 @@ def parse_type_b(lines, doc_id):
             m = re_point.match(line)
             num = m.group(1) + "." + m.group(2)
             text = m.group(3).strip()
-            art = {
-                "type": "article",
-                "number": num,
-                "title": text[:80] + ("…" if len(text) > 80 else ""),
-                "children": [{"type": "paragraph", "text": text}],
-            }
+
+            # В ПДД у статей почти нет отдельных заголовков —
+            # сразу идёт норма права. Поэтому:
+            #   - если строка короткая и заканчивается на ':' — это
+            #     заголовок-вводка для последующего списка;
+            #   - иначе — это тело статьи, весь текст идёт в состав,
+            #     title пустой (в списке будет серое превью).
+            is_title = text.endswith(":") or len(text) <= 40
+
+            if is_title:
+                art = {
+                    "type": "article",
+                    "number": num,
+                    "title": text,
+                    "children": [],
+                }
+            else:
+                art = {
+                    "type": "article",
+                    "number": num,
+                    "title": "",
+                    "children": [{"type": "paragraph", "text": text}],
+                }
+
             target = current_subsection or current_section
             if target:
                 target.setdefault("children", []).append(art)
@@ -784,11 +797,13 @@ def cleanup_nodes(nodes):
         if n.get("type") in ("paragraph", "subparagraph", "note"):
             if not n.get("text", "").strip():
                 continue
-        if n.get("type") in ("chapter", "section", "part"):
+        if n.get("type") in ("chapter", "section", "part", "article_group"):
             if not n.get("children"):
                 continue
         cleaned.append(n)
     return cleaned
+
+
 
 # ============================================================
 # Уникальные node_id для статей
@@ -949,6 +964,53 @@ def walk_split_parts(node):
         split_parts(node)
     for child in node.get("children", []):
         walk_split_parts(child)
+
+# ============================================================
+# Вложение статей: article N → контейнер для N.M
+# ============================================================
+
+def nest_article_groups(nodes):
+    """
+    Статья N становится `article_group` ТОЛЬКО если:
+      - у неё нет собственного тела (children пустой);
+      - сразу после неё идут статьи N.M.
+
+    Иначе N остаётся обычной статьёй, а N.M — её соседями в списке.
+    Никаких own_children / is_article_with_subs.
+
+    Примеры:
+      ПК глава I ст. 6 (пустая) + 6.1–6.4 → article_group 6.
+      ПК глава I ст. 7 (с телом) + 7.1     → article 7, article 7.1 (соседи).
+      ПК глава II ст. 1 (с телом) + 1.1    → article 1, article 1.1 (соседи).
+    """
+    def walk(items):
+        i = 0
+        while i < len(items):
+            n = items[i]
+            if n.get("type") == "article":
+                num = str(n.get("number", ""))
+                own = n.get("children") or []
+                if num and "." not in num and not own:
+                    prefix = num + "."
+                    j = i + 1
+                    children = []
+                    while j < len(items):
+                        m = items[j]
+                        if (m.get("type") == "article"
+                                and str(m.get("number", "")).startswith(prefix)):
+                            children.append(m)
+                            j += 1
+                        else:
+                            break
+                    if children:
+                        walk(children)
+                        n["type"] = "article_group"
+                        n["children"] = children
+                        del items[i+1:j]
+            if "children" in n:
+                walk(n["children"])
+            i += 1
+    walk(nodes)
 # ============================================================
 # Главная функция парсинга
 # ============================================================
@@ -989,11 +1051,11 @@ def parse_document(raw_data, config=None):
     for n in nodes:
         walk_extract_penalty(n)
 
-    # Вариант B: разбиваем многочастные статьи на parts
     for n in nodes:
         walk_split_parts(n)
 
-    # Уникальные node_id для статей (Этап 2)
+    nest_article_groups(nodes)
+
     assign_node_ids(nodes)
 
     nodes = cleanup_nodes(nodes)

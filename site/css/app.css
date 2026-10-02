@@ -837,6 +837,7 @@ details[open] > .nav-title { color: var(--text); }
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 .row-actions { display: flex; gap: 3px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
@@ -976,9 +977,6 @@ details[open] > .nav-title { color: var(--text); }
   color: var(--accent);
   font-weight: 700;
   letter-spacing: 0.3px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(233,74,74,0.15);
-  margin-top: 4px;
 }
 /* === Части статьи (вариант B) === */
 .part-card {
@@ -1040,9 +1038,6 @@ details[open] > .nav-title { color: var(--text); }
   color: var(--accent);
   font-weight: 700;
   letter-spacing: 0.3px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(233, 74, 74, 0.15);
-  margin-top: 4px;
 }
 .article-actions {
   display: flex;
@@ -1184,6 +1179,7 @@ details[open] > .nav-title { color: var(--text); }
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 .modal-remove {
@@ -1447,4 +1443,98 @@ details[open] > .nav-title { color: var(--text); }
   left: 8px;
   color: var(--accent);
   font-weight: 700;
+}
+/* === article_group в колонке 2 === */
+.article-group-row {
+  list-style: none;
+  margin-bottom: 3px;
+}
+.article-group-row > .row-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.article-group-row > .row-main:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+.row-title-group {
+  flex: 1;
+  font-weight: 600;
+  color: var(--text);
+}
+.row-group-count {
+  font-size: 11px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.row-group-arrow {
+  color: var(--text-mute);
+  font-size: 12px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.article-group-row.is-open > .row-main > .row-group-arrow {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+.article-group-children {
+  list-style: none;
+  padding-left: 16px;
+  margin-top: 3px;
+  display: none;
+  border-left: 1px dashed var(--border-hard);
+}
+.article-group-row.is-open > .article-group-children { display: block; }
+
+/* === превью текста для статей без заголовка === */
+.row-preview {
+  font-style: italic;
+  color: var(--text);
+  font-weight: 400;
+}
+
+/* === статья-контейнер на странице === */
+.group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.group-child {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  color: inherit;
+  text-decoration: none;
+}
+.group-child:hover {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+.group-child-title {
+  flex: 1;
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.35;
+}
+.group-child-arrow {
+  color: var(--text-mute);
+  font-size: 14px;
+  transition: transform 0.15s;
+}
+.group-child:hover .group-child-arrow {
+  color: var(--accent);
+  transform: translateX(3px);
 }

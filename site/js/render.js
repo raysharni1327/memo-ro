@@ -309,63 +309,148 @@ const Render = (() => {
   // === law.html: список статей ===
 
   function articleList(docId, articles, query) {
-    const el = document.getElementById('article-list');
-    const countEl = document.getElementById('list-count');
-    if (!el) return;
+  const el = document.getElementById('article-list');
+  const countEl = document.getElementById('list-count');
+  if (!el) return;
 
-       const myFaction = getMyFaction();
+  const myFaction = getMyFaction();
+  countEl.textContent = `${articles.length} статей`;
 
-    countEl.textContent = `${articles.length} статей`;
+  if (!articles.length) {
+    el.innerHTML = `<li class="empty-hint" style="padding:20px;">Ничего не найдено.</li>`;
+    return;
+  }
 
-    if (!articles.length) {
-      el.innerHTML = `<li class="empty-hint" style="padding:20px;">Ничего не найдено.</li>`;
-      return;
+  // Собираем node_id всех детей article_group,
+  // чтобы не рендерить их на верхнем уровне.
+  const childIds = new Set();
+  articles.forEach(a => {
+    if (a.type === 'article_group') {
+      (a.children || []).forEach(c => {
+        if (c.type === 'article') {
+          childIds.add(c.node_id || c.number);
+        }
+      });
+    }
+  });
+
+  const topLevel = articles.filter(a => {
+    const id = a.node_id || a.number;
+    return !childIds.has(id);
+  });
+
+  function renderRow(a) {
+    // article_group → строка-заголовок с ▶ и вложенным <ul>
+    if (a.type === 'article_group') {
+      const inner = (a.children || [])
+        .filter(c => c.type === 'article')
+        .map(renderRow)
+        .join('');
+      const n = (a.children || []).filter(c => c.type === 'article').length;
+      return `<li class="article-group-row" data-group="${a.node_id || a.number}">
+        <div class="row-main">
+          <span class="row-num" style="background:${GRAY_COMMON}">${a.number}</span>
+          <span class="row-title row-title-group">${groupTitleHtml(a)}</span>
+          <span class="row-group-count">${n} ${pluralArticles(n)}</span>
+          <span class="row-group-arrow">▸</span>
+        </div>
+        <ul class="article-group-children">${inner}</ul>
+      </li>`;
     }
 
-    el.innerHTML = articles.map(a => {
-      const marks = (a.meta && a.meta.marks) || [];
-      const common = marks.length === 0;
+    // обычная статья
+    const marks = (a.meta && a.meta.marks) || [];
+    const common = marks.length === 0;
 
-      let numBg;
-      let badgeHtml = '';
+    let numBg;
+    let badgeHtml = '';
 
-      if (!myFaction) {
-        numBg = GRAY_COMMON;
-      } else if (common) {
-        numBg = GRAY_COMMON;
+    if (!myFaction) {
+      numBg = GRAY_COMMON;
+    } else if (common) {
+      numBg = GRAY_COMMON;
+    } else {
+      const mine = isMine(a, myFaction);
+      if (mine) {
+        numBg = factionColor(myFaction);
       } else {
-        const mine = isMine(a, myFaction);
-        if (mine) {
-          numBg = factionColor(myFaction);
-        } else {
-          numBg = GRAY_FOREIGN;
-          const transfer = transferTo(a, myFaction);
-          if (transfer) {
-            const color = factionColor(transfer);
-            badgeHtml = `<span class="mark-badge" style="background:${color}">→ ${factionShort(transfer)}</span>`;
-          }
+        numBg = GRAY_FOREIGN;
+        const transfer = transferTo(a, myFaction);
+        if (transfer) {
+          const color = factionColor(transfer);
+          badgeHtml = `<span class="mark-badge" style="background:${color}">→ ${factionShort(transfer)}</span>`;
         }
       }
+    }
 
-      const cls = (!myFaction || common || isMine(a, myFaction))
-        ? 'article-row'
-        : 'article-row row-foreign';
+    const cls = (!myFaction || common || isMine(a, myFaction))
+      ? 'article-row'
+      : 'article-row row-foreign';
 
-            const nodeId = `${docId}-${a.node_id || a.number}`;
-      const inFav  = Store.favHas(nodeId);
-      const inCart = Store.cartHas(nodeId);
+    const nodeId = `${docId}-${a.node_id || a.number}`;
+    const inFav  = Store.favHas(nodeId);
+    const inCart = Store.cartHas(nodeId);
 
-            return `<li class="${cls}" data-article="${a.node_id || a.number}" data-node="${nodeId}">
-        <span class="row-num" style="background:${numBg}">${a.number}</span>
-        <span class="row-marks">${badgeHtml}</span>
-        <span class="row-title">${a.title || ''}</span>
-        <span class="row-actions">
-          <button class="row-btn ${inFav ? 'row-btn-active' : ''}" data-fav data-node="${nodeId}">${inFav ? '★' : '☆'}</button>
-          <button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">🗑</button>
-        </span>
-      </li>`;
-    }).join('');
+    const titleHtml = a.title
+      ? escapeHtml(a.title)
+      : `<span class="row-preview">${escapeHtml(previewText(a))}</span>`;
+
+    return `<li class="${cls}" data-article="${a.node_id || a.number}" data-node="${nodeId}">
+      <span class="row-num" style="background:${numBg}">${a.number}</span>
+      <span class="row-marks">${badgeHtml}</span>
+      <span class="row-title">${titleHtml}</span>
+      <span class="row-actions">
+        <button class="row-btn ${inFav ? 'row-btn-active' : ''}" data-fav data-node="${nodeId}">${inFav ? '★' : '☆'}</button>
+        <button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">${inCart ? '★' : '🗑'}</button>
+      </span>
+    </li>`;
   }
+
+  el.innerHTML = topLevel.map(renderRow).join('');
+
+  // обработчик раскрытия групп
+  el.querySelectorAll('.article-group-row').forEach(row => {
+    const main = row.querySelector('.row-main');
+    if (!main) return;
+    main.addEventListener('click', (e) => {
+      if (e.target.closest('[data-fav],[data-cart]')) return;
+      row.classList.toggle('is-open');
+    });
+  });
+}
+
+// Заголовок группы в списке статей: настоящий title или превью из own_children.
+function groupTitleHtml(a) {
+  if (a.title) return escapeHtml(a.title);
+  return `<span class="row-preview">${escapeHtml(previewText(a, 80))}</span>`;
+}
+
+function previewText(a, max = 90) {
+  // Для article_group собственный состав живёт в own_children,
+  // а не в children (там только подстатьи).
+  const src = (a.type === 'article_group')
+    ? (a.own_children || [])
+    : (a.children || []);
+  const first = src.find(c => c.type === 'paragraph' && c.text);
+  let s = (first && first.text) || '';
+  s = s.trim();
+  if (s.length <= max) return s;
+  return s.slice(0, max).replace(/\s+\S*$/, '') + '…';
+}
+
+
+function pluralArticles(n) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 'статья';
+  if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return 'статьи';
+  return 'статей';
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
   // === law.html: статья справа ===
 
@@ -381,6 +466,11 @@ const Render = (() => {
       el.innerHTML = `<div class="empty-hint">Статья ${articleNum} не найдена.</div>`;
       return;
     }
+    // === Случай 1: пользователь открыл статью-контейнер ===
+if (found.type === 'article_group') {
+  renderArticleGroup(el, doc, found, docId);
+  return;
+}
 
         // Сохраняем в "Недавние". Используем node_id найденной статьи —
     // на случай, если пришли по старой ссылке с дублирующимся number.
@@ -426,12 +516,15 @@ const Render = (() => {
       partsHtml = found.parts.map(p => {
         const pen = p.penalty;
         let penHtml = '';
-        if (pen && pen.raw) {
+                if (pen && pen.raw) {
           const parsed = (pen.types || []).map(renderPenaltyType).join(' · ');
-          penHtml = `<div class="part-penalty">
-            <span class="penalty-raw">${pen.raw}</span>
-            ${parsed ? `<span class="penalty-parsed">${parsed}</span>` : ''}
-          </div>`;
+          penHtml = parsed
+            ? `<div class="part-penalty">
+                <span class="penalty-parsed">${parsed}</span>
+              </div>`
+            : `<div class="part-penalty">
+                <span class="penalty-raw">${pen.raw}</span>
+              </div>`;
         }
                         const partNodeId = `${docId}-${found.node_id || found.number}#p${p.number}`;
         const partInFav  = Store.favHas(partNodeId);
@@ -454,17 +547,27 @@ const Render = (() => {
         </div>`;
       }).join('');
             } else {
-      partsHtml = renderArticleChildren(found.children || []);
+            // Для «статьи с подстатьёй» (is_article_with_subs) собственный состав
+      // лежит в own_children, а подстатьи — в children.
+      const ownSrc = (Array.isArray(found.own_children) && found.own_children.length)
+        ? found.own_children
+        : (found.children || []);
+        partsHtml = renderArticleChildren(found.children || []);
     }
-
+    
        // Сводный penalty статьи показываем только если нет parts.
-    let penaltyHtml = '';
+        let penaltyHtml = '';
     if (!(found.parts && found.parts.length) && found.penalty && found.penalty.raw) {
       const parsed = (found.penalty.types || []).map(renderPenaltyType).join(' · ');
-      penaltyHtml = `<div class="penalty-block">
-        <span class="penalty-raw">${found.penalty.raw}</span>
-        ${parsed ? `<span class="penalty-parsed">${parsed}</span>` : ''}
-      </div>`;
+      // Если распарсили — показываем только распарсенное.
+      // Если парсер не справился — оставляем raw как fallback.
+      penaltyHtml = parsed
+        ? `<div class="penalty-block">
+            <span class="penalty-parsed">${parsed}</span>
+          </div>`
+        : `<div class="penalty-block">
+            <span class="penalty-raw">${found.penalty.raw}</span>
+          </div>`;
     }
 
     const inFav  = Store.favHas(nodeId);
@@ -501,6 +604,7 @@ const Render = (() => {
           <div class="field-label">Наказание</div>
           ${penaltyHtml}
         </div>` : ''}
+
       </div>
 
       <div class="article-actions">
@@ -518,7 +622,7 @@ const Render = (() => {
 
     // === Обработчики ===
 
-        el.addEventListener('click', (e) => {
+        el.onclick = (e) => {
       const favBtn  = e.target.closest('[data-fav]');
       const cartBtn = e.target.closest('[data-cart]');
       const copyBtn = e.target.closest('[data-copy]');
@@ -567,8 +671,43 @@ const Render = (() => {
         }, 1500);
         return;
       }
-    });
+    };
   }
+
+    function renderArticleGroup(el, doc, group, docId) {
+  const children = (group.children || []).filter(c => c.type === 'article');
+
+  const listHtml = children.map(c => {
+    const nodeId = `${docId}-${c.node_id || c.number}`;
+    const titleHtml = c.title
+      ? escapeHtml(c.title)
+      : `<span class="row-preview">${escapeHtml(previewText(c, 100))}</span>`;
+    return `<a class="group-child" href="law.html#${nodeId}">
+      <span class="row-num" style="background:${GRAY_COMMON}">${c.number}</span>
+      <span class="group-child-title">${titleHtml}</span>
+      <span class="group-child-arrow">→</span>
+    </a>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="article-header">
+      <div class="article-meta-top">
+        <span class="card-doc doc-plate">${docShort(docId)}</span>
+        <span class="article-num">Статья ${group.number}</span>
+      </div>
+      ${group.title ? `<h1 class="article-title">${group.title}</h1>` : ''}
+    </div>
+
+    <div class="article-body">
+      <div class="article-field">
+        <div class="field-label">Содержит ${children.length} ${pluralArticles(children.length)}</div>
+        <div class="group-children">${listHtml}</div>
+      </div>
+    </div>
+  `;
+
+  el.onclick = null;
+}
 
   // Обновить иконки ★/🗑 в строке списка
   function refreshRowButtons(nodeId) {
@@ -623,6 +762,8 @@ const Render = (() => {
   }
   // Рекурсивный рендер состава статьи.
   // Поддерживает paragraph, subparagraph, note — с любым уровнем вложенности.
+
+
   function renderArticleChildren(children) {
     if (!children || !children.length) return '';
 
