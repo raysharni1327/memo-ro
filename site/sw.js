@@ -8,7 +8,7 @@
 // Пример: было 'v1', стало 'v2'. При следующей загрузке SW перекачает
 // всё заново.
 
-const CACHE_VERSION = 'v26';
+const CACHE_VERSION = 'v29';
 const CACHE_NAME = `ro-memo-${CACHE_VERSION}`;
 
 // Файлы, которые кэшируются сразу при первой установке SW
