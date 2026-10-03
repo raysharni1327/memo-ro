@@ -105,12 +105,10 @@ const Modal = (() => {
         </div>`;
       }
 
-            if (summary.freedomSumRaw > 0) {
-        const shown = summary.freedomMax;
-        const capped = summary.freedomSumRaw > 50 ? ' (макс.)' : '';
+                  if (summary.freedomMax > 0) {
         aggHtml += `<div class="cart-agg">
           <div class="cart-agg-label">Лишение свободы</div>
-          <div class="cart-agg-value">До ${shown} мин.${capped}</div>
+          <div class="cart-agg-value">До ${summary.freedomMax} мин.</div>
         </div>`;
       }
 
@@ -481,7 +479,7 @@ const Modal = (() => {
       lines.push(`Штраф: ${formatFineRange(summary) || '—'}`);
     }
     if (summary.arrestMax) lines.push(`Арест: до ${summary.arrestMax} суток`);
-    if (summary.freedomSumRaw) lines.push(`Лишение свободы: до ${summary.freedomMax} мин.`);
+        if (summary.freedomMax) lines.push(`Лишение свободы: до ${summary.freedomMax} мин.`);
     lines.push('');
 
     for (const it of summary.items) {

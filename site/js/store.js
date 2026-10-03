@@ -132,13 +132,13 @@ const Store = (() => {
   // Агрегация корзины
   // ----------------------------------------------------------
 
-      function cartSummary() {
+          function cartSummary() {
     const items = cart.list().map(resolveNode).filter(Boolean);
 
     let fineMin = 0, fineMax = 0, hasFine = false;
     let arrestMax = 0;
-    let freedomSum = 0;
-    let starsSum = 0;
+    let freedomMax = 0;
+    let starsMax = 0;
 
     for (const it of items) {
       const p = it.penalty;
@@ -152,21 +152,15 @@ const Store = (() => {
           if (t.type === 'арест' && t.to && t.to > arrestMax) {
             arrestMax = t.to;
           }
-          if (t.type === 'лишение свободы' && t.to) {
-            freedomSum += t.to;
+          if (t.type === 'лишение свободы' && t.to && t.to > freedomMax) {
+            freedomMax = t.to;
           }
         }
       }
 
       const stars = it.meta && it.meta.priorityStars;
-      if (stars) starsSum += stars;
+      if (stars && stars > starsMax) starsMax = stars;
     }
-
-    const FREEDOM_CAP = 50;
-    const freedomMax = Math.min(freedomSum, FREEDOM_CAP);
-
-    const STARS_CAP = 5;
-    const starsMax = Math.min(starsSum, STARS_CAP);
 
     return {
       count: items.length,
@@ -176,7 +170,6 @@ const Store = (() => {
       fineMax,
       arrestMax,
       freedomMax,
-      freedomSumRaw: freedomSum,
       starsMax,
     };
   }
