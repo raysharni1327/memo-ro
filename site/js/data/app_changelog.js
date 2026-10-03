@@ -4,6 +4,13 @@
 // префиксом feat: / fix: / ui: / perf: и запустите скрипт.
 window.APP_CHANGELOG = [
   {
+    "version": "1.1.0",
+    "date": "2026-10-03",
+    "kind": "ui",
+    "text": "инфраструктура app_changelog: генератор из git",
+    "hash": "65b8414"
+  },
+  {
     "version": "1.0.0",
     "date": "2026-10-03",
     "kind": "new",
