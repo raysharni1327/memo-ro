@@ -126,6 +126,23 @@ git — репозиторий инициализирован, .gitignore в к�
 
 README.md — полная документация пайплайна и скриптов.
 
+### Обновления памятки (app_changelog)
+
+- Файл VERSION в корне — SemVer (1.0.0).
+- Генератор: parser/gen_app_changelog.py.
+- Источник: git-история, префиксы feat/fix/ui/perf.
+- Игнорируются: data, docs, chore, refactor, test, style, release.
+- Хранит hash последней записи, берёт коммиты после него.
+- Требует смены VERSION между запусками (иначе --allow-same-version).
+- Запуск: python parser/gen_app_changelog.py [--dry-run].
+
+Workflow релиза:
+  1. Обновить VERSION (1.0.0 → 1.1.0).
+  2. python parser/gen_app_changelog.py
+  3. git add VERSION site/js/data/app_changelog.js
+  4. git commit -m "release: v1.1.0"
+  5. Поднять CACHE_VERSION в sw.js, если менялся контент.
+
 ### Единая точка входа: update_all.py
 
 Вместо четырёх команд вручную — одна:
