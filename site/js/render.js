@@ -658,9 +658,9 @@ const Render = (() => {
           <div class="part-header">
             <span class="part-label">${p.label || (found.number + ' ч.' + p.number)}</span>
             ${p.title ? `<span class="part-title">${p.title}</span>` : ''}
-                        <span class="part-actions">
+                                    <span class="part-actions">
               <button class="row-btn ${partInFav ? 'row-btn-active' : ''}" data-fav data-node="${partNodeId}">${partInFav ? '★' : '☆'}</button>
-              ${isCartDoc(docId) ? `<button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">🗑</button>` : ''}
+              ${isCartDoc(docId) ? `<button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">+</button>` : ''}
             </span>
           </div>
           <div class="part-body">
