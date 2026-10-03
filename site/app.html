@@ -56,36 +56,37 @@
     </button>
   </aside>
 
-  <main class="content" id="main-content">
+  <main class="main">
+  <div class="main-columns">
+    <div class="main-col-left">
+      <section class="home-section">
+        <h2>Часто нужны</h2>
+        <div class="cards-mini" id="block-popular"></div>
+      </section>
 
-    <section class="block">
-      <h2 class="block-title">Часто нужны</h2>
-      <div class="cards-row" id="block-popular"></div>
-    </section>
+      <section class="home-section">
+        <h2>Недавние</h2>
+        <div class="cards-mini" id="block-recent"></div>
+      </section>
+    </div>
 
-    <section class="block">
-      <h2 class="block-title">Недавние</h2>
-      <div class="cards-row" id="block-recent">
-        <div class="card-ghost"></div>
-        <div class="card-ghost"></div>
-        <div class="card-ghost"></div>
-        <div class="card-ghost"></div>
-      </div>
-    </section>
+    <aside class="main-col-right">
+  <section class="home-section">
+    <h2>Последние изменения</h2>
+    <ul class="changelog-list" id="block-changelog"></ul>
+  </section>
 
-    <section class="block">
-      <h2 class="block-title">Последние изменения</h2>
-      <ul class="changelog" id="block-changelog">
-        <li class="changelog-ghost"></li>
-        <li class="changelog-ghost"></li>
-        <li class="changelog-ghost"></li>
-      </ul>
-    </section>
-  </main>
-</div>
+  <section class="home-section">
+    <h2>Обновления памятки <span class="app-changelog-ver" id="app-changelog-ver"></span></h2>
+    <ul class="app-changelog-list" id="block-app-changelog"></ul>
+  </section>
+</aside>
+  </div>
+</main>
 
 <!-- Данные -->
 <script src="js/data/_manifest.js"></script>
+<script src="js/data/app_changelog.js"></script>
 <script src="js/data/changelog.js"></script>
 <script src="js/data/ak.js"></script>
 <script src="js/data/pdd.js"></script>

@@ -8,7 +8,7 @@
 // Пример: было 'v1', стало 'v2'. При следующей загрузке SW перекачает
 // всё заново.
 
-const CACHE_VERSION = 'v32';
+const CACHE_VERSION = 'v33';
 const CACHE_NAME = `ro-memo-${CACHE_VERSION}`;
 
 // Файлы, которые кэшируются сразу при первой установке SW
@@ -29,6 +29,7 @@ const PRECACHE = [
   './js/law.js',
 
   './js/data/_manifest.js',
+  'js/data/app_changelog.js',
   './js/data/changelog.js',
   './js/data/ak.js',
   './js/data/pdd.js',

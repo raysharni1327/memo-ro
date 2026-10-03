@@ -155,6 +155,53 @@ const Render = (() => {
 }).join('');
   }
 
+    // === Главная: "Обновления памятки" ===
+
+  const APP_CHANGELOG_SHOWN = 6;
+
+  const APP_KIND_ICON = {
+    new:  '✦',
+    fix:  '✧',
+    ui:   '◈',
+    perf: '⚡',
+  };
+
+  function appChangelog() {
+    const el = document.getElementById('block-app-changelog');
+    if (!el) return;
+
+    const entries = (typeof window.APP_CHANGELOG !== 'undefined'
+      && Array.isArray(window.APP_CHANGELOG))
+      ? window.APP_CHANGELOG
+      : [];
+
+    // Версия в заголовке секции — берём из самой свежей записи.
+    const verEl = document.getElementById('app-changelog-ver');
+    if (verEl) {
+      const v = entries.length ? (entries[0].version || '') : '';
+      verEl.textContent = v ? `· v${v}` : '';
+    }
+
+    if (!entries.length) {
+      el.innerHTML = `
+        <li class="changelog-ghost"></li>
+        <li class="changelog-ghost"></li>
+      `;
+      return;
+    }
+
+    el.innerHTML = entries.slice(0, APP_CHANGELOG_SHOWN).map(e => {
+      const kind = e.kind || 'ui';
+      const icon = APP_KIND_ICON[kind] || '•';
+      const date = shortDate(e.date || '');
+      return `<li class="app-changelog-item app-changelog-${kind}">
+        <span class="app-changelog-date">${date}</span>
+        <span class="app-changelog-icon">${icon}</span>
+        <span class="app-changelog-text">${escapeHtml(e.text || '')}</span>
+      </li>`;
+    }).join('');
+  }
+
   // === Главная: "Последние изменения" ===
 
   function changelog() {
@@ -854,8 +901,8 @@ const Render = (() => {
     return t.type;
   }
 
-  return {
-  sidebar, popular, recent, changelog,
+    return {
+  sidebar, popular, recent, changelog, appChangelog,
   tree, articleList, article,
   docShort, factionShort, factionColor,
   refreshRowButtons,
