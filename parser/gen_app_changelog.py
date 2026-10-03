@@ -87,14 +87,23 @@ def git_log_since(since_hash: str | None) -> list:
     else:
         range_spec = 'HEAD'
 
+    import os
+    env = os.environ.copy()
+    env['LC_ALL'] = 'C.UTF-8'
+    env['LANG'] = 'C.UTF-8'
+    env['PYTHONIOENCODING'] = 'utf-8'
+
     try:
-        out = subprocess.check_output(
+        out_bytes = subprocess.check_output(
             ['git', 'log', range_spec, '--pretty=format:%H|%s', '--reverse'],
-            cwd=ROOT, text=True, stderr=subprocess.PIPE,
+            cwd=ROOT, stderr=subprocess.PIPE, env=env,
         )
     except subprocess.CalledProcessError as e:
-        print(f'[!] git log упал: {e.stderr}', file=sys.stderr)
+        err = e.stderr.decode('utf-8', errors='replace') if e.stderr else ''
+        print(f'[!] git log упал: {err}', file=sys.stderr)
         sys.exit(1)
+
+    out = out_bytes.decode('utf-8', errors='replace')
 
     result = []
     for line in out.splitlines():
@@ -103,7 +112,6 @@ def git_log_since(since_hash: str | None) -> list:
         h, subject = line.split('|', 1)
         result.append((h.strip(), subject.strip()))
     return result
-
 
 def parse_commit(subject: str):
     """Возвращает (kind, text) или None, если коммит игнорируется."""
