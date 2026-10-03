@@ -59,6 +59,10 @@ const Render = (() => {
 
   function iconFor(docId)    { return ICONS[docId] || '🔵'; }
   function docShort(docId)   { return DOC_SHORT[docId] || docId.toUpperCase(); }
+    function articleLabel(num, partNum) {
+    if (partNum) return `Статья ${num} ч.${partNum}`;
+    return `Статья ${num}`;
+  }
   // Данные о фракциях — в Profile.FACTIONS (единый источник)
   function factionShort(f)   { return Profile.FACTIONS[f]?.short || f; }
   function factionColor(f)   { return Profile.FACTIONS[f]?.color || '#888'; }
@@ -105,13 +109,13 @@ const Render = (() => {
     { doc: 'uk',  num: '6.2',  title: 'Убийство' },
   ];
 
-  function popular() {
+    function popular() {
     const el = document.getElementById('block-popular');
     if (!el) return;
     el.innerHTML = POPULAR.map(p => `
       <a class="card-mini" href="law.html#${p.doc}-${p.num}">
         <div class="card-doc doc-plate">${docShort(p.doc)}</div>
-        <div class="card-num">${p.num}</div>
+        <div class="card-num">${articleLabel(p.num)}</div>
         <div class="card-title">${p.title}</div>
       </a>
     `).join('');
@@ -148,9 +152,7 @@ const Render = (() => {
     title = art ? (previewText(art, 90) || 'Текст недоступен') : 'Текст недоступен';
   }
 
-  const numLabel = it.isPart
-    ? `${it.articleNum} ч.${it.partNum}`
-    : it.articleNum;
+    const numLabel = articleLabel(it.articleNum, it.isPart ? it.partNum : null);
 
   return `<a class="card-mini" href="law.html#${nodeId}">
     <div class="card-doc doc-plate">${docShort(it.docId)}</div>
@@ -959,10 +961,11 @@ const Render = (() => {
     return t.type;
   }
 
-      return {
+        return {
   sidebar, popular, recent, changelog, appChangelog, cheatsheets,
   tree, articleList, article,
   docShort, factionShort, factionColor,
+  articleLabel,
   refreshRowButtons,
   refreshArticleButtons,
   previewText,

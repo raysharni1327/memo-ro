@@ -54,8 +54,7 @@ const Modal = (() => {
             html = `<ul class="modal-list">` + list.map(nodeId => {
   const it = Store.resolveNode(nodeId);
   if (!it || it.error) return '';
-  const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
-
+    const numLabel = Render.articleLabel(it.articleNum, it.isPart ? it.partNum : null);
   // Как во второй колонке: если title пустой — превью из children
   let title = it.title;
   if (!title) {
@@ -113,7 +112,7 @@ const Modal = (() => {
       }
 
             const itemsHtml = summary.items.map(it => {
-  const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
+   const numLabel = Render.articleLabel(it.articleNum, it.isPart ? it.partNum : null);
 
   // Как во второй колонке: если title пустой — превью из children
   let title = it.title;
@@ -272,7 +271,7 @@ const Modal = (() => {
           : '';
         return `<a class="${cls}" href="law.html#${r.docId}-${r.nodeId}" data-index="${i}">
           <span class="modal-doc doc-plate">${docShort}</span>
-          <span class="modal-num">${r.num}</span>
+                    <span class="modal-num">${Render.articleLabel(r.num)}</span>
           <span class="search-result-text">
             <span class="search-result-title">${dot}${escapeHtml(r.title || '')}</span>
             ${r.context && r.kind === 'text'
@@ -409,10 +408,11 @@ const Modal = (() => {
 
     copyNums?.addEventListener('click', () => {
       const summary = Store.cartSummary();
-            const text = summary.items.map(it => {
-        const numLabel = it.isPart ? `${it.articleNum} ч.${it.partNum}` : it.articleNum;
-        return `${Render.docShort(it.docId)} ${numLabel}`;
-      }).join('\n');
+                const text = summary.items.map(it => {
+            const numLabel = Render.articleLabel(it.articleNum, it.isPart ? it.partNum : null);
+      lines.push(`${Render.docShort(it.docId)} ${numLabel}. ${it.title}`);
+      return `${Render.docShort(it.docId)} ${numLabel}`;
+    }).join('\n');
       try {
         navigator.clipboard.writeText(text);
       } catch (e) {
