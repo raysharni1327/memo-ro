@@ -1816,3 +1816,114 @@ a,
 .app-changelog-ui   .app-changelog-icon { color: #a78bfa; }
 .app-changelog-perf .app-changelog-icon { color: #f59e0b; }
 .app-changelog-text { color: var(--text-dim); flex: 1; }
+/* ============================================================
+   Шпаргалки (главная)
+   ============================================================ */
+
+.cheatsheets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.cheatsheet-tile {
+  background: linear-gradient(180deg, var(--bg-card) 0%, #131317 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 18px 20px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.18s ease;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.cheatsheet-tile::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--border-hard), transparent);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.cheatsheet-tile:hover {
+  border-color: rgba(233,74,74,0.4);
+  background: linear-gradient(180deg, #1a1a20 0%, #16161a 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(233,74,74,0.15);
+}
+.cheatsheet-tile:hover::before {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.cheatsheet-tile:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.cheatsheet-tile-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  letter-spacing: 0.2px;
+}
+
+.cheatsheet-tile-count {
+  font-size: 11px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+}
+
+/* Заглушки, если CHEATSHEETS пуст */
+.cheatsheet-ghost {
+  height: 88px;
+  background: linear-gradient(180deg, #131318 0%, #101014 100%);
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: var(--r-md);
+  opacity: 0.75;
+}
+
+/* === Список внутри модалки шпаргалки === */
+
+.cheatsheet-modal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.cheatsheet-modal-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.cheatsheet-modal-num {
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  min-width: 24px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.cheatsheet-modal-text {
+  flex: 1;
+  color: var(--text);
+}

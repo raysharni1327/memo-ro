@@ -144,6 +144,24 @@ const Modal = (() => {
     attachCartHandlers();
   }
 
+  // === Шпаргалка ===
+
+  function openCheatsheet(sheet) {
+    if (!sheet || !Array.isArray(sheet.items) || !sheet.items.length) {
+      open(`<div class="empty-hint">Шпаргалка пуста.</div>`, sheet?.title || 'Шпаргалка');
+      return;
+    }
+
+    const list = sheet.items.map((it, i) =>
+      `<li>
+        <span class="cheatsheet-modal-num">${i + 1}.</span>
+        <span class="cheatsheet-modal-text">${escapeHtml(it)}</span>
+      </li>`
+    ).join('');
+
+    open(`<ol class="cheatsheet-modal-list">${list}</ol>`, sheet.title || 'Шпаргалка');
+  }
+
   // === Смена профиля ===
 
   function openProfileSwitcher(onChange) {
@@ -493,6 +511,5 @@ const Modal = (() => {
     if (cartEl) cartEl.textContent = Store.cartCount();
   }
 
-  return { openFavorites, openCart, openProfileSwitcher, openSearch, close, updateCounters };
-
+   return { openFavorites, openCart, openProfileSwitcher, openSearch, openCheatsheet, close, updateCounters };
 })();

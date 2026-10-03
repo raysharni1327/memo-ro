@@ -166,6 +166,43 @@ const Render = (() => {
     perf: '⚡',
   };
 
+      // === Главная: "Шпаргалки" ===
+
+  function cheatsheets() {
+    const el = document.getElementById('block-cheatsheets');
+    if (!el) return;
+
+    const items = (typeof window.CHEATSHEETS !== 'undefined'
+      && Array.isArray(window.CHEATSHEETS))
+      ? window.CHEATSHEETS
+      : [];
+
+    if (!items.length) {
+      el.innerHTML = `
+        <div class="cheatsheet-ghost"></div>
+        <div class="cheatsheet-ghost"></div>
+        <div class="cheatsheet-ghost"></div>
+        <div class="cheatsheet-ghost"></div>
+      `;
+      return;
+    }
+
+    el.innerHTML = items.map(sheet => `
+      <button class="cheatsheet-tile" data-cheatsheet="${sheet.id}" type="button">
+        <span class="cheatsheet-tile-title">${escapeHtml(sheet.title)}</span>
+        <span class="cheatsheet-tile-count">${sheet.items.length} ${pluralPoints(sheet.items.length)}</span>
+      </button>
+    `).join('');
+
+    el.querySelectorAll('.cheatsheet-tile').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.cheatsheet;
+        const sheet = items.find(s => s.id === id);
+        if (sheet) Modal.openCheatsheet(sheet);
+      });
+    });
+  }
+
   function appChangelog() {
     const el = document.getElementById('block-app-changelog');
     if (!el) return;
@@ -505,6 +542,13 @@ const Render = (() => {
   function groupTitleHtml(a) {
     if (a.title) return escapeHtml(a.title);
     return `<span class="row-preview">${escapeHtml(previewText(a, 80))}</span>`;
+  }
+
+    function pluralPoints(n) {
+    const n10 = n % 10, n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return 'пункт';
+    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return 'пункта';
+    return 'пунктов';
   }
 
   function pluralArticles(n) {
@@ -901,8 +945,8 @@ const Render = (() => {
     return t.type;
   }
 
-    return {
-  sidebar, popular, recent, changelog, appChangelog,
+      return {
+  sidebar, popular, recent, changelog, appChangelog, cheatsheets,
   tree, articleList, article,
   docShort, factionShort, factionColor,
   refreshRowButtons,

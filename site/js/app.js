@@ -32,6 +32,7 @@ function refreshUI(profile = Profile.get()) {
   Render.recent();
   Render.changelog();
   Render.appChangelog();
+  Render.cheatsheets();
   Modal.updateCounters();
 }
 
