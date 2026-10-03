@@ -31,6 +31,11 @@ const Render = (() => {
   };
 
   const CODEX_IDS = ['uk', 'ak', 'pk', 'pdd'];
+    // Корзина доступна только для этих документов.
+  // Для остальных (ПК, ПДД, ФЗ, Конституция) корзина скрыта — там нет
+  // штрафов/арестов/лишения свободы в смысле УК/КоАП.
+  const CART_DOCS = ['uk', 'ak'];
+  function isCartDoc(docId) { return CART_DOCS.includes(docId); }
 
 
 
@@ -514,13 +519,17 @@ const Render = (() => {
         ? escapeHtml(a.title)
         : `<span class="row-preview">${escapeHtml(previewText(a))}</span>`;
 
+            const cartBtn = isCartDoc(docId)
+        ? `<button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">+</button>`
+        : '';
+
       return `<li class="${cls}" data-article="${a.node_id || a.number}" data-node="${nodeId}">
         <span class="row-num" style="background:${numBg}">${a.number}</span>
         <span class="row-marks">${badgeHtml}</span>
         <span class="row-title">${titleHtml}</span>
         <span class="row-actions">
           <button class="row-btn ${inFav ? 'row-btn-active' : ''}" data-fav data-node="${nodeId}">${inFav ? '★' : '☆'}</button>
-          <button class="row-btn ${inCart ? 'row-btn-active' : ''}" data-cart data-node="${nodeId}">+</button>
+          ${cartBtn}
         </span>
       </li>`;
     }
@@ -647,9 +656,9 @@ const Render = (() => {
           <div class="part-header">
             <span class="part-label">${p.label || (found.number + ' ч.' + p.number)}</span>
             ${p.title ? `<span class="part-title">${p.title}</span>` : ''}
-            <span class="part-actions">
+                        <span class="part-actions">
               <button class="row-btn ${partInFav ? 'row-btn-active' : ''}" data-fav data-node="${partNodeId}">${partInFav ? '★' : '☆'}</button>
-              <button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">🗑</button>
+              ${isCartDoc(docId) ? `<button class="row-btn ${partInCart ? 'row-btn-active' : ''}" data-cart data-node="${partNodeId}">🗑</button>` : ''}
             </span>
           </div>
           <div class="part-body">
@@ -683,12 +692,19 @@ const Render = (() => {
           </div>`;
     }
 
-    const inFav  = Store.favHas(nodeId);
+        const inFav  = Store.favHas(nodeId);
     const inCart = Store.cartHas(nodeId);
 
     // ← ПРАВКА 1.3: не рендерим пустой <h1>, если title пустой.
     const titleBlock = found.title
       ? `<h1 class="article-title">${escapeHtml(found.title)}</h1>`
+      : '';
+
+    // Корзина доступна только для УК и КоАП.
+    const cartActionBtn = isCartDoc(docId)
+      ? `<button class="action-btn ${inCart ? 'is-active' : ''}" data-cart data-node="${nodeId}">
+           <span>🛒</span><span>${inCart ? 'В корзине' : 'В корзину'}</span>
+         </button>`
       : '';
 
     el.innerHTML = `
@@ -729,9 +745,7 @@ const Render = (() => {
         <button class="action-btn action-primary ${inFav ? 'is-active' : ''}" data-fav data-node="${nodeId}">
           <span>★</span><span>${inFav ? 'В избранном' : 'В избранное'}</span>
         </button>
-        <button class="action-btn ${inCart ? 'is-active' : ''}" data-cart data-node="${nodeId}">
-          <span>🛒</span><span>${inCart ? 'В корзине' : 'В корзину'}</span>
-        </button>
+        ${cartActionBtn}
         <button class="action-btn" data-copy data-node="${nodeId}">
           <span>📋</span><span>Копировать ссылку</span>
         </button>
